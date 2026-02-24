@@ -1,0 +1,15 @@
+# Secrets
+.env
+
+# Runtime data
+config/
+workspace/
+projects/
+gog-config/
+tailscale-state/
+syncthing-config/
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db

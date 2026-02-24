@@ -1,0 +1,67 @@
+services:
+  # --- OPENCLAW GATEWAY ---
+  openclaw-gateway:
+    build: .
+    container_name: openclaw-gateway
+    restart: unless-stopped
+    init: true
+    network_mode: "host"
+    environment:
+      - NODE_ENV=production
+      - HOME=/home/node
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+      - OPENCLAW_CONFIG_DIR=/home/node/.openclaw
+      - OPENCLAW_WORKSPACE_DIR=/home/node/.openclaw/workspace
+      - OPENCLAW_GATEWAY_PORT=18789
+      - OPENCLAW_BRIDGE_PORT=18790
+      - GOG_KEYRING_PASSWORD=${GOG_KEYRING_PASSWORD}
+      - GOG_ACCOUNT=${GOG_ACCOUNT}
+      - GOG_TIMEZONE=Europe/Madrid
+    volumes:
+      - ./config:/home/node/.openclaw
+      - ./workspace:/home/node/.openclaw/workspace
+      - ./projects:/home/node/projects
+      - ./gog-config:/home/node/.config/gogcli
+      - /var/run/tailscale:/var/run/tailscale:ro
+    command: ["node", "dist/index.js", "gateway", "--allow-unconfigured"]
+
+  # --- SYNCTHING PARA OBSIDIAN ---
+  syncthing:
+    image: linuxserver/syncthing:latest
+    container_name: syncthing
+    hostname: syncthing-nas
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Madrid
+    volumes:
+      - ./syncthing-config:/config
+      - ./workspace:/data
+    ports:
+      - "8385:8384"
+      - "22001:22000/tcp"
+      - "22001:22000/udp"
+      - "21028:21027/udp"
+    restart: unless-stopped
+
+  # --- CLI TOOL ---
+  openclaw-cli:
+    build: .
+    container_name: openclaw-cli
+    profiles: ["tools"]
+    network_mode: "host"
+    environment:
+      TERM: xterm-256color
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      GOG_KEYRING_PASSWORD: ${GOG_KEYRING_PASSWORD}
+      GOG_ACCOUNT: ${GOG_ACCOUNT}
+      GOG_TIMEZONE: Europe/Madrid
+    volumes:
+      - ./config:/home/node/.openclaw
+      - ./workspace:/home/node/.openclaw/workspace
+      - ./projects:/home/node/projects
+      - ./gog-config:/home/node/.config/gogcli
+    stdin_open: true
+    tty: true
+    entrypoint: ["node", "dist/index.js"]
