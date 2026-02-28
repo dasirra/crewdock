@@ -56,6 +56,35 @@ auth-codex:        ## Authenticate with OpenAI Codex
 auth-anthropic:    ## Authenticate with Anthropic
 	sudo docker compose run --rm openclaw-cli models auth login --provider anthropic
 
+# --- Claude Dev Orchestrator ---
+
+dev-setup:         ## First-time setup: copy example config
+	@mkdir -p claude-dev-config claude-dev-state
+	@if [ ! -f claude-dev-config/dev-config.json ]; then \
+		cp claude-dev/config.example.json claude-dev-config/dev-config.json; \
+		echo "Created claude-dev-config/dev-config.json — edit it before starting."; \
+	else \
+		echo "claude-dev-config/dev-config.json already exists."; \
+	fi
+
+dev-start:         ## Start the Claude Dev orchestrator
+	sudo docker compose up -d claude-dev
+
+dev-stop:          ## Stop the Claude Dev orchestrator
+	sudo docker compose stop claude-dev
+
+dev-restart:       ## Restart the Claude Dev orchestrator
+	sudo docker compose restart claude-dev
+
+dev-logs:          ## Tail Claude Dev orchestrator logs
+	sudo docker compose logs -f --tail 50 claude-dev
+
+dev-status:        ## Show active jobs (state file)
+	@cat claude-dev-state/jobs.json 2>/dev/null | python3 -m json.tool || echo "No state file yet."
+
+dev-build:         ## Rebuild the Claude Dev image
+	sudo docker compose build claude-dev
+
 # --- Maintenance ---
 
 clean:             ## Remove old/dangling Docker images
