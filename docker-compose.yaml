@@ -17,6 +17,13 @@ services:
       - GOG_KEYRING_PASSWORD=${GOG_KEYRING_PASSWORD}
       - GOG_ACCOUNT=${GOG_ACCOUNT}
       - GOG_TIMEZONE=Europe/Madrid
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GH_TOKEN=${GITHUB_TOKEN}
+      - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-Claude Dev}
+      - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-claude-dev@localhost}
+      - GIT_COMMITTER_NAME=${GIT_AUTHOR_NAME:-Claude Dev}
+      - GIT_COMMITTER_EMAIL=${GIT_AUTHOR_EMAIL:-claude-dev@localhost}
     volumes:
       - ./config:/home/node/.openclaw
       - ./workspace:/home/node/.openclaw/workspace
@@ -43,32 +50,6 @@ services:
       - "22001:22000/udp"
       - "21028:21027/udp"
     restart: unless-stopped
-
-  # --- CLAUDE DEV ORCHESTRATOR ---
-  claude-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile.claude-dev
-    container_name: claude-dev
-    restart: unless-stopped
-    network_mode: "host"
-    environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-      - OPENCLAW_URL=http://localhost:18789
-      - DEV_CONFIG_PATH=/config/dev-config.json
-      - DEV_STATE_PATH=/state/jobs.json
-      - PROJECTS_DIR=/projects
-      - LOGS_DIR=/state/logs
-      - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-Claude Dev}
-      - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-claude-dev@localhost}
-      - GIT_COMMITTER_NAME=${GIT_AUTHOR_NAME:-Claude Dev}
-      - GIT_COMMITTER_EMAIL=${GIT_AUTHOR_EMAIL:-claude-dev@localhost}
-    volumes:
-      - ./claude-dev-config:/config
-      - ./claude-dev-state:/state
-      - ./projects:/projects
 
   # --- CLI TOOL ---
   openclaw-cli:

@@ -10,10 +10,6 @@ tailscale-state/
 syncthing-config/
 .claude/
 
-# Claude Dev runtime (config contains secrets, state is ephemeral)
-claude-dev-config/
-claude-dev-state/
-
 # OS files
 .DS_Store
 Thumbs.db

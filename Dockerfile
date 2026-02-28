@@ -34,6 +34,17 @@ RUN curl -L https://github.com/steipete/gogcli/releases/download/v0.11.0/gogcli_
     && chmod +x /usr/local/bin/gog \
     && rm gog.tar.gz
 
+# Claude Code CLI (for Forge autonomous dev via /autopilot)
+RUN npm install -g @anthropic-ai/claude-code
+
+# GitHub CLI
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      | tee /usr/share/keyrings/githubcli-archive-keyring.gpg >/dev/null \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      | tee /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && apt-get install -y gh \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create dev workspace
 RUN mkdir -p /home/node/projects && chown -R node:node /home/node/projects
 
