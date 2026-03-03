@@ -2,7 +2,7 @@ FROM alpine/openclaw:latest
 
 USER root
 
-# Install dev tools + Tailscale CLI (daemon runs natively on host)
+# Install dev tools, Flutter deps + Tailscale CLI
 RUN apt-get update && apt-get install -y \
     jq \
     procps \
@@ -13,6 +13,10 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     python3 \
     python3-pip \
+    unzip \
+    xz-utils \
+    zip \
+    libglu1-mesa \
     && mkdir -p /usr/share/keyrings \
     && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null \
     && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list \
@@ -34,9 +38,6 @@ RUN curl -L https://github.com/steipete/gogcli/releases/download/v0.11.0/gogcli_
     && chmod +x /usr/local/bin/gog \
     && rm gog.tar.gz
 
-# Claude Code CLI (for Forge autonomous dev via /autopilot)
-RUN npm install -g @anthropic-ai/claude-code
-
 # GitHub CLI
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
       | tee /usr/share/keyrings/githubcli-archive-keyring.gpg >/dev/null \
@@ -45,7 +46,24 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get update && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
 
-# Create dev workspace
-RUN mkdir -p /home/node/projects && chown -R node:node /home/node/projects
+# Flutter SDK
+RUN git clone --branch stable https://github.com/flutter/flutter.git /opt/flutter \
+    && chown -R node:node /opt/flutter
+ENV PATH="/opt/flutter/bin:${PATH}"
+
+# Create dev workspace & ensure home is owned by node
+RUN mkdir -p /home/node/projects \
+    && chown -R node:node /home/node
 
 USER node
+ENV PATH="/home/node/.local/bin:${PATH}"
+
+# Pre-cache Flutter artifacts
+RUN flutter precache
+
+# Claude Code CLI (installed as node user)
+RUN curl -fsSL https://claude.ai/install.sh | bash
+
+# Claude Code default settings
+RUN mkdir -p /home/node/.claude \
+    && echo '{"plugins":{"allow":["acpx"]}}' > /home/node/.claude/settings.json

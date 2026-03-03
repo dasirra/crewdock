@@ -6,6 +6,7 @@ config/
 workspace/
 projects/
 gog-config/
+claude-config/
 tailscale-state/
 syncthing-config/
 .claude/
