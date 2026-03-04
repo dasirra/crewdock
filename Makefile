@@ -1,4 +1,4 @@
-.PHONY: up down restart update rebuild logs status version cli onboard clean
+.PHONY: up down restart update rebuild logs status version shell cli onboard clean
 
 # --- Daily operations ---
 
@@ -43,6 +43,9 @@ update:            ## Pull latest image, rebuild, and restart everything
 	@sudo docker compose logs --tail 5 openclaw-gateway
 
 # --- CLI tools ---
+
+shell:             ## Open bash shell in the gateway container
+	sudo docker compose exec openclaw-gateway bash
 
 cli:               ## Open interactive CLI
 	sudo docker compose run --rm openclaw-cli
