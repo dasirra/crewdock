@@ -1,0 +1,34 @@
+# docker-compose.override.yaml — Personal service additions
+#
+# Copy this file to docker-compose.override.yaml to add your own services
+# or override gateway settings. Docker Compose merges it automatically.
+# docker-compose.override.yaml is gitignored.
+
+services:
+  # Example: use a custom Dockerfile with extra tools
+  # openclaw-gateway:
+  #   build:
+  #     dockerfile: Dockerfile.local
+  #   environment:
+  #     - GOOGLE_WORKSPACE_CLI_CONFIG_DIR=/home/node/.config/gws
+  #   volumes:
+  #     - ./config/gws:/home/node/.config/gws
+  #     - /var/run/tailscale:/var/run/tailscale:ro
+
+  # Example: Syncthing for Obsidian sync
+  # syncthing:
+  #   image: linuxserver/syncthing:latest
+  #   container_name: syncthing
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=Europe/Madrid
+  #   volumes:
+  #     - ./config/syncthing:/config
+  #     - ./workspace:/data
+  #   ports:
+  #     - "8385:8384"
+  #     - "22001:22000/tcp"
+  #     - "22001:22000/udp"
+  #     - "21028:21027/udp"
+  #   restart: unless-stopped
