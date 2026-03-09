@@ -5,7 +5,7 @@ A self-hosted personal AI assistant that runs 24/7 on your server. Built on [Ope
 ## What's Included
 
 - **OpenClaw Gateway** — always-on LLM agent with Telegram, Google Workspace, and other integrations
-- **Forge (dev-orchestrator)** — autonomous development agent that picks up GitHub issues, writes code, and opens PRs using Claude
+- **Forge** — autonomous development agent that picks up GitHub issues, writes code, and opens PRs using Claude
 
 ## Prerequisites
 
@@ -65,24 +65,28 @@ This opens the Claude CLI auth flow inside the container. Follow the prompts, th
 
 ### Step 6: Configure Forge
 
-Edit `workspace/agents/dev-orchestrator/forge-config.json` with your GitHub repos:
+Edit `workspace/agents/forge/config.json` with your GitHub repos:
 
 ```json
 {
   "timezone": "America/New_York",
+  "defaults": {
+    "agentId": "claude",
+    "model": null,
+    "schedule": "on-demand",
+    "thread": true,
+    "maxConcurrentSessions": 4
+  },
   "projects": [
     {
       "repo": "your-username/your-repo",
-      "branch": "main",
-      "agentId": "claude",
-      "schedule": "on-demand",
-      "enabled": true
+      "branch": "main"
     }
   ]
 }
 ```
 
-Then trigger Forge via Telegram (`run your-repo`) or set a schedule.
+Projects inherit from `defaults` — only `repo` and `branch` are required. Then trigger Forge via Telegram (`run your-repo`) or set a schedule.
 
 ## Configuration
 
@@ -96,6 +100,18 @@ Then trigger Forge via Telegram (`run your-repo`) or set a schedule.
 | `GIT_AUTHOR_NAME` | No | Git commit author name (default: `Claude Dev`) |
 | `GIT_AUTHOR_EMAIL` | No | Git commit author email (default: `claude-dev@localhost`) |
 
+### Forge Global Defaults
+
+Set in `config.json` under `defaults`. Projects inherit these unless overridden.
+
+| Setting | Default | Description |
+|---|---|---|
+| `agentId` | `"claude"` | ACP agent for sessions |
+| `model` | `null` | Model override (`null` = agent's default) |
+| `schedule` | `"on-demand"` | Default schedule for new projects |
+| `thread` | `true` | Create a thread per session |
+| `maxConcurrentSessions` | `4` | Max active autopilot sessions globally |
+
 ### Forge Schedules
 
 | Schedule | Behavior |
@@ -108,12 +124,16 @@ Then trigger Forge via Telegram (`run your-repo`) or set a schedule.
 
 ### Forge Project Options
 
+Per-project overrides. Only `repo` and `branch` are required — everything else inherits from defaults.
+
 | Field | Required | Description |
 |---|---|---|
 | `repo` | Yes | GitHub repo (`owner/name`) |
 | `branch` | Yes | Base branch to work from |
-| `agentId` | No | Agent to use (default: `claude`) |
-| `schedule` | No | When to run (default: `on-demand`) |
+| `agentId` | No | Override default agent |
+| `model` | No | Override default model |
+| `schedule` | No | Override default schedule |
+| `thread` | No | Override default thread setting |
 | `enabled` | No | Toggle on/off (default: `true`) |
 | `excludeLabels` | No | Issue labels to skip |
 | `testCommand` | No | Custom test command (default: auto-detect) |
@@ -140,7 +160,7 @@ make clean             # Remove dangling Docker images
 ```
 openclaw/
 ├── agents/                      # Agent templates (tracked in git)
-│   └── dev-orchestrator/        # Forge agent definition
+│   └── forge/                   # Forge agent definition
 ├── config/                      # All runtime config (gitignored)
 │   ├── openclaw/                # OpenClaw gateway config
 │   ├── claude/                  # Claude CLI config
@@ -230,7 +250,7 @@ Copy `docker-compose.override.example.yaml` to `docker-compose.override.yaml` an
 ## How Forge Works
 
 1. A cron job fires every 15 minutes
-2. Forge reads `forge-config.json` and checks which repos are due
+2. Forge reads `config.json` and checks which repos are due
 3. For each matching repo, it fetches open GitHub issues (oldest first)
 4. It filters out issues that already have PRs or active sessions
 5. It spawns a Claude coding session per issue (up to 4 concurrent)

@@ -1,0 +1,16 @@
+{
+  "timezone": "America/New_York",
+  "defaults": {
+    "agentId": "claude",
+    "model": null,
+    "schedule": "on-demand",
+    "thread": true,
+    "maxConcurrentSessions": 4
+  },
+  "projects": [
+    {
+      "repo": "your-username/your-repo",
+      "branch": "main"
+    }
+  ]
+}
