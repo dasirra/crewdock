@@ -7,6 +7,21 @@ cd "$SCRIPT_DIR"
 echo "=== OpenClaw Setup ==="
 echo ""
 
+# --- Version pin ---
+if [ -f .openclaw-version ]; then
+    echo "[ok] .openclaw-version already exists ($(cat .openclaw-version)), skipping."
+else
+    LATEST=$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
+      | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))] | first' 2>/dev/null)
+    if [ -n "$LATEST" ]; then
+        echo "$LATEST" > .openclaw-version
+        echo "[ok] Pinned OpenClaw version to $LATEST"
+    else
+        echo "latest" > .openclaw-version
+        echo "[!!] Could not reach Docker Hub, defaulting to 'latest'"
+    fi
+fi
+
 # --- .env ---
 if [ -f .env ]; then
     echo "[ok] .env already exists, skipping."

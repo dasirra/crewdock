@@ -1,5 +1,8 @@
 .PHONY: setup up down restart logs status version shell cli onboard update clean help
 
+OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
+export OPENCLAW_VERSION
+
 # --- Setup ---
 
 setup:             ## First-time setup: create .env, install agents
@@ -28,9 +31,12 @@ logs-all:          ## Tail all service logs
 status:            ## Show running containers
 	docker compose ps
 
-version:           ## Show running and image versions
+version:           ## Show pinned, running, and latest versions
+	@echo "Pinned:    $(OPENCLAW_VERSION)"
 	@echo "Running:   $$(docker compose exec openclaw-gateway node dist/index.js --version 2>/dev/null || echo 'not running')"
-	@echo "Image:     $$(docker run --rm alpine/openclaw:latest node dist/index.js --version 2>/dev/null || echo 'not pulled')"
+	@LATEST=$$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
+	  | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))] | first' 2>/dev/null || echo 'unknown'); \
+	echo "Latest:    $$LATEST"
 
 # --- CLI tools ---
 
@@ -45,16 +51,31 @@ onboard:           ## Run onboarding (for auth setup)
 
 # --- Updates ---
 
-update:            ## Pull latest image, rebuild, and restart
-	docker compose down
-	docker pull alpine/openclaw:latest
-	docker build --no-cache -t openclaw-openclaw-gateway:latest -f Dockerfile .
-	docker compose build --no-cache
-	docker compose up -d
-	@echo ""
-	@echo "Waiting for gateway to start..."
-	@sleep 5
-	@docker compose logs --tail 5 openclaw-gateway
+update:            ## Check for new OpenClaw version, update and rebuild if newer
+	@CURRENT=$$(cat .openclaw-version 2>/dev/null || echo "0.0.0"); \
+	LATEST=$$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
+	  | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))] | first'); \
+	if [ -z "$$LATEST" ]; then \
+	  echo "ERROR: Could not fetch latest version from Docker Hub"; exit 1; \
+	fi; \
+	echo "Current: $$CURRENT"; \
+	echo "Latest:  $$LATEST"; \
+	CUR_NUM=$$(echo "$$CURRENT" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
+	LAT_NUM=$$(echo "$$LATEST" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
+	if [ "$$LAT_NUM" -le "$$CUR_NUM" ]; then \
+	  echo "Already up to date."; exit 0; \
+	fi; \
+	echo "Updating to $$LATEST..."; \
+	echo "$$LATEST" > .openclaw-version; \
+	export OPENCLAW_VERSION=$$LATEST; \
+	docker compose down; \
+	docker pull alpine/openclaw:$$LATEST; \
+	docker compose build --no-cache; \
+	docker compose up -d; \
+	echo ""; \
+	echo "Updated to $$LATEST. Waiting for gateway to start..."; \
+	sleep 5; \
+	docker compose logs --tail 5 openclaw-gateway
 
 # --- Maintenance ---
 

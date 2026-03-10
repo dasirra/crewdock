@@ -1,4 +1,5 @@
-FROM alpine/openclaw:latest
+ARG OPENCLAW_VERSION=latest
+FROM alpine/openclaw:${OPENCLAW_VERSION}
 
 USER root
 

@@ -1,7 +1,10 @@
 services:
   # --- OPENCLAW GATEWAY ---
   openclaw-gateway:
-    build: .
+    build:
+      context: .
+      args:
+        OPENCLAW_VERSION: ${OPENCLAW_VERSION:-latest}
     container_name: openclaw-gateway
     restart: unless-stopped
     init: true
@@ -30,7 +33,10 @@ services:
 
   # --- CLI TOOL ---
   openclaw-cli:
-    build: .
+    build:
+      context: .
+      args:
+        OPENCLAW_VERSION: ${OPENCLAW_VERSION:-latest}
     container_name: openclaw-cli
     profiles: ["tools"]
     network_mode: "host"
