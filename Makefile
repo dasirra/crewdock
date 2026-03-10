@@ -47,9 +47,9 @@ onboard:           ## Run onboarding (for auth setup)
 
 update:            ## Pull latest image, rebuild, and restart
 	docker compose down
-	docker rmi alpine/openclaw:latest 2>/dev/null || true
 	docker pull alpine/openclaw:latest
-	DOCKER_BUILDKIT=0 docker compose build --no-cache --pull
+	docker build --no-cache -t openclaw-openclaw-gateway:latest -f Dockerfile .
+	docker compose build --no-cache
 	docker compose up -d
 	@echo ""
 	@echo "Waiting for gateway to start..."
