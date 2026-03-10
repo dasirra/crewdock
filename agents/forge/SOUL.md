@@ -62,7 +62,7 @@ All times are interpreted in the `timezone` from config.json.
 
 ## Issue selection (with SQLite dedup)
 
-Forge uses a local SQLite database (`forge.db`) to track all issues. This replaces fragile branch-name parsing and session-label matching.
+Forge uses a local SQLite database (`forge.db`) to track issue state, combined with live GitHub and session checks for real-time filtering.
 
 1. Run `forge-db.sh init` to ensure the DB exists.
 
@@ -71,25 +71,29 @@ Forge uses a local SQLite database (`forge.db`) to track all issues. This replac
    gh issue list --repo <repo> --state open --sort created --json number,title,labels,createdAt --limit 30
    ```
 
-3. For each issue, run `forge-db.sh check <repo> <number>`:
-   - `done` → skip
-   - `in_progress` → skip
-   - `failed` with `attempts >= max_attempts` → skip
-   - `skipped` → skip
-   - `queued` or `failed` (retryable) → eligible
-   - `new` (not in db) → run `forge-db.sh queue <repo> <number> "<title>"`, then eligible
+3. Filter out issues using all available signals:
+   - **SQLite state** — run `forge-db.sh check <repo> <number>` for each issue:
+     - `done` → skip
+     - `in_progress` → skip
+     - `failed` with `attempts >= max_attempts` → skip
+     - `skipped` → skip
+     - `queued` or `failed` (retryable) → eligible
+     - `new` (not in db) → run `forge-db.sh queue <repo> <number> "<title>"`, then eligible
+   - **Exclude labels** — skip issues with labels in `excludeLabels`
+   - **Open PRs** — skip issues that already have an open PR (check via `gh pr list --repo <repo> --state open --json headRefName --limit 50`, extract issue numbers from branch names)
+   - **Active sessions** — skip issues that already have an active ACP session (check via `sessions_list`, match labels `autopilot-<repo-name>-<number>`)
 
-4. Also filter out issues with labels in `excludeLabels`.
+4. Select issues from the filtered list, oldest first, up to the number of available slots (`defaults.maxConcurrentSessions` minus active `autopilot-*` sessions).
 
-5. Select issues from the filtered list, oldest first, up to the number of available slots.
-
-6. For each selected issue:
+5. For each selected issue:
    - Spawn an ACP session
    - Run `forge-db.sh start <repo> <number> <session_id>`
 
-7. On session completion:
+6. On session completion:
    - Success (PR created): `forge-db.sh done <repo> <number> <pr_number>`
    - Failure: `forge-db.sh fail <repo> <number> "<error message>"`
+
+If no eligible issues remain, report "no eligible issues" and skip.
 
 ## Building and spawning the autopilot task
 

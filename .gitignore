@@ -1,15 +1,23 @@
 # Secrets
 .env
 
-# Runtime data
+# Runtime data (created by setup.sh)
 config/
 workspace/
 projects/
-gog-config/
-claude-config/
-tailscale-state/
-syncthing-config/
 .claude/
+
+# Legacy config dirs (pre-restructure)
+claude-config/
+gws-config/
+syncthing-config/
+
+# Tailscale runtime
+tailscale-serve.json
+
+# Personal overrides
+docker-compose.override.yaml
+Dockerfile.local
 
 # OS files
 .DS_Store

@@ -14,9 +14,7 @@ services:
       - OPENCLAW_WORKSPACE_DIR=/home/node/.openclaw/workspace
       - OPENCLAW_GATEWAY_PORT=18789
       - OPENCLAW_BRIDGE_PORT=18790
-      - GOG_KEYRING_PASSWORD=${GOG_KEYRING_PASSWORD}
-      - GOG_ACCOUNT=${GOG_ACCOUNT}
-      - GOG_TIMEZONE=Europe/Madrid
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GH_TOKEN=${GITHUB_TOKEN}
       - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-Claude Dev}
@@ -24,32 +22,11 @@ services:
       - GIT_COMMITTER_NAME=${GIT_AUTHOR_NAME:-Claude Dev}
       - GIT_COMMITTER_EMAIL=${GIT_AUTHOR_EMAIL:-claude-dev@localhost}
     volumes:
-      - ./config:/home/node/.openclaw
+      - ./config/openclaw:/home/node/.openclaw
       - ./workspace:/home/node/.openclaw/workspace
       - ./projects:/home/node/projects
-      - ./gog-config:/home/node/.config/gogcli
-      - ./claude-config:/home/node/.claude
-      - /var/run/tailscale:/var/run/tailscale:ro
+      - ./config/claude:/home/node/.claude
     command: ["node", "dist/index.js", "gateway", "--allow-unconfigured"]
-
-  # --- SYNCTHING PARA OBSIDIAN ---
-  syncthing:
-    image: linuxserver/syncthing:latest
-    container_name: syncthing
-    hostname: syncthing-nas
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Madrid
-    volumes:
-      - ./syncthing-config:/config
-      - ./workspace:/data
-    ports:
-      - "8385:8384"
-      - "22001:22000/tcp"
-      - "22001:22000/udp"
-      - "21028:21027/udp"
-    restart: unless-stopped
 
   # --- CLI TOOL ---
   openclaw-cli:
@@ -61,14 +38,10 @@ services:
       TERM: xterm-256color
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
       OPENCLAW_CONFIG_DIR: /home/node/.openclaw
-      GOG_KEYRING_PASSWORD: ${GOG_KEYRING_PASSWORD}
-      GOG_ACCOUNT: ${GOG_ACCOUNT}
-      GOG_TIMEZONE: Europe/Madrid
     volumes:
-      - ./config:/home/node/.openclaw
+      - ./config/openclaw:/home/node/.openclaw
       - ./workspace:/home/node/.openclaw/workspace
       - ./projects:/home/node/projects
-      - ./gog-config:/home/node/.config/gogcli
     stdin_open: true
     tty: true
     entrypoint: ["node", "dist/index.js"]
