@@ -28,6 +28,14 @@ EOF
 
 db() { sqlite3 "$DB" "$@"; }
 
+# Escape single quotes for safe SQL interpolation: ' → ''
+esc() { printf '%s' "${1//\'/\'\'}"; }
+
+# Validate that a value is a positive integer
+assert_int() {
+  [[ "$1" =~ ^[0-9]+$ ]] || { echo "Error: expected integer, got '$1'" >&2; exit 1; }
+}
+
 cmd_init() {
   mkdir -p "$(dirname "$DB")"
   db <<'SQL'
@@ -46,43 +54,56 @@ CREATE TABLE IF NOT EXISTS issues (
     error TEXT,
     UNIQUE(repo, issue_number)
 );
+CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
+CREATE INDEX IF NOT EXISTS idx_issues_repo_status ON issues(repo, status);
 SQL
   echo "DB initialized: $DB"
 }
 
 cmd_check() {
-  local repo="$1" num="$2"
+  local repo; repo=$(esc "$1")
+  local num="$2"; assert_int "$num"
   local status
   status=$(db "SELECT status FROM issues WHERE repo='$repo' AND issue_number=$num;")
   echo "${status:-new}"
 }
 
 cmd_queue() {
-  local repo="$1" num="$2" title="$3"
+  local repo; repo=$(esc "$1")
+  local num="$2"; assert_int "$num"
+  local title; title=$(esc "$3")
   db "INSERT OR IGNORE INTO issues (repo, issue_number, title, status) VALUES ('$repo', $num, '$title', 'queued');
       UPDATE issues SET updated_at=datetime('now') WHERE repo='$repo' AND issue_number=$num AND status='queued';"
 }
 
 cmd_start() {
-  local repo="$1" num="$2" session_id="$3"
+  local repo; repo=$(esc "$1")
+  local num="$2"; assert_int "$num"
+  local session_id; session_id=$(esc "$3")
   db "UPDATE issues SET status='in_progress', session_id='$session_id', attempts=attempts+1, updated_at=datetime('now')
       WHERE repo='$repo' AND issue_number=$num;"
 }
 
 cmd_done() {
-  local repo="$1" num="$2" pr_number="$3"
+  local repo; repo=$(esc "$1")
+  local num="$2"; assert_int "$num"
+  local pr_number="$3"; assert_int "$pr_number"
   db "UPDATE issues SET status='done', pr_number=$pr_number, updated_at=datetime('now')
       WHERE repo='$repo' AND issue_number=$num;"
 }
 
 cmd_fail() {
-  local repo="$1" num="$2" error="$3"
+  local repo; repo=$(esc "$1")
+  local num="$2"; assert_int "$num"
+  local error; error=$(esc "$3")
   db "UPDATE issues SET status='failed', error='$error', updated_at=datetime('now')
       WHERE repo='$repo' AND issue_number=$num;"
 }
 
 cmd_skip() {
-  local repo="$1" num="$2" reason="$3"
+  local repo; repo=$(esc "$1")
+  local num="$2"; assert_int "$num"
+  local reason; reason=$(esc "$3")
   db "UPDATE issues SET status='skipped', error='$reason', updated_at=datetime('now')
       WHERE repo='$repo' AND issue_number=$num;"
 }
@@ -91,8 +112,8 @@ cmd_list() {
   local where="1=1"
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --status) where="$where AND status='$2'"; shift 2 ;;
-      --repo)   where="$where AND repo='$2'";   shift 2 ;;
+      --status) where="$where AND status='$(esc "$2")'"; shift 2 ;;
+      --repo)   where="$where AND repo='$(esc "$2")'";   shift 2 ;;
       *) echo "Unknown option: $1"; usage ;;
     esac
   done
@@ -100,7 +121,7 @@ cmd_list() {
 }
 
 cmd_eligible() {
-  local repo="$1"
+  local repo; repo=$(esc "$1")
   db "SELECT issue_number, title FROM issues
       WHERE repo='$repo'
         AND (
@@ -111,7 +132,8 @@ cmd_eligible() {
 }
 
 cmd_reset() {
-  local repo="$1" num="$2"
+  local repo; repo=$(esc "$1")
+  local num="$2"; assert_int "$num"
   db "UPDATE issues SET status='queued', error=NULL, updated_at=datetime('now')
       WHERE repo='$repo' AND issue_number=$num;"
 }
