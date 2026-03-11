@@ -1,4 +1,5 @@
-FROM alpine/openclaw:latest
+ARG OPENCLAW_VERSION=latest
+FROM alpine/openclaw:${OPENCLAW_VERSION}
 
 USER root
 
@@ -9,6 +10,19 @@ RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
     git \
+    build-essential \
+    python3 \
+    python3-pip \
+    unzip \
+    xz-utils \
+    zip \
+    libglu1-mesa \
+    sqlite3 \
+    && mkdir -p /usr/share/keyrings \
+    && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null \
+    && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list \
+    && apt-get update \
+    && apt-get install -y tailscale \
     && rm -rf /var/lib/apt/lists/*
 
 # GitHub CLI

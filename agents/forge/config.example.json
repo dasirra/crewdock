@@ -1,16 +1,25 @@
 {
-  "timezone": "America/New_York",
+  "timezone": "Europe/Madrid",
   "defaults": {
     "agentId": "claude",
     "model": null,
     "schedule": "on-demand",
     "thread": true,
-    "maxConcurrentSessions": 4
+    "maxConcurrentSessions": 4,
+    "maxAttempts": 3
   },
   "projects": [
     {
-      "repo": "your-username/your-repo",
-      "branch": "main"
+      "repo": "owner/repo",
+      "branch": "main",
+      "agentId": "claude",
+      "model": null,
+      "schedule": "22-07",
+      "thread": false,
+      "enabled": true,
+      "excludeLabels": ["wontfix"],
+      "testCommand": "npm test",
+      "setupInstructions": "npm install"
     }
   ]
 }
