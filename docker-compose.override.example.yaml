@@ -13,7 +13,6 @@ services:
   #     - GOOGLE_WORKSPACE_CLI_CONFIG_DIR=/home/node/.config/gws
   #   volumes:
   #     - ./config/gws:/home/node/.config/gws
-  #     - /var/run/tailscale:/var/run/tailscale:ro
 
   # Example: Syncthing for Obsidian sync
   # syncthing:
