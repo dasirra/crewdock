@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-OpenClaw NAS — a self-hosted AI assistant running 24/7 on a NAS via Docker. Two main components:
+OpenClaw NAS — a self-hosted AI assistant running 24/7 on a NAS via Docker, built on [OpenClaw](https://github.com/openclaw/openclaw). For upstream docs, APIs, and troubleshooting, check the [documentation](https://docs.openclaw.ai/start/getting-started). When debugging issues, consult these resources for possible solutions before assuming the problem is local.
+
+Two main components:
 
 - **OpenClaw Gateway** — always-on LLM agent with Telegram, Google Workspace integrations
 - **Forge** — autonomous dev agent that picks up GitHub issues, writes code, and opens PRs using Claude CLI
@@ -42,7 +44,7 @@ Forge is the autonomous development orchestrator. Understanding its flow is key 
 1. Reads `workspace/agents/forge/config.json` for project list and defaults
 2. Checks concurrency via `sessions_list` (max 4 active `autopilot-*` sessions)
 3. For each enabled project whose schedule matches: fetches open GitHub issues, filters through SQLite DB + active sessions + open PRs + exclude labels
-4. Spawns ACP sessions using interpolated `autopilot-template.md`
+4. Spawns native sessions (with thread binding) that invoke `acpx` CLI with interpolated `autopilot-template.md`
 5. Exits — sessions continue autonomously
 
 **Key Forge files (in `agents/forge/`):**
@@ -63,7 +65,7 @@ The OpenClaw base image version is pinned in `.openclaw-version` (CalVer `YYYY.M
 ## Docker Setup
 
 - Base image: `alpine/openclaw:<version>` (Debian-based despite the name, version from `.openclaw-version`)
-- `Dockerfile` adds: git, gh CLI, jq, sqlite3, tailscale, python3, build-essential, Claude CLI
+- `Dockerfile` adds: git, gh CLI, jq, sqlite3, python3, build-essential, Claude CLI
 - `Dockerfile.local` — personal tool additions (gitignored, built from `.example`)
 - `docker-compose.override.yaml` — personal service additions (gitignored, merges automatically)
 - Network mode: host. Container user: `node`. Home: `/home/node`
@@ -85,5 +87,5 @@ Volume mounts map local dirs into the container:
 
 - **Agent installation:** `setup.sh` copies `agents/` to `workspace/agents/`, renames `.example.*` files. Edit templates in `agents/forge/`, run `make setup` to reinstall (skips existing).
 - **Forge config changes:** Forge can modify `config.json` only when the user explicitly asks. Never autonomously.
-- **Autopilot sessions:** spawned via `sessions_spawn` with label `autopilot-<repo-name>-<issue-number>`, run in `session` mode with thread support.
+- **Autopilot sessions:** hybrid spawn — `sessions_spawn` (native runtime, no `agentId`) with `thread: true` creates a Discord thread; the native session invokes `acpx` CLI directly for the coding work. This works around the ACP runtime flag-ordering bug.
 - **Concurrency:** checked via `sessions_list` counting `autopilot-*` sessions, capped at `defaults.maxConcurrentSessions`.

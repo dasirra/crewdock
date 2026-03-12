@@ -44,10 +44,10 @@ shell:             ## Open bash shell in the gateway container
 	docker compose exec openclaw-gateway bash
 
 cli:               ## Open interactive CLI
-	docker compose run --rm openclaw-cli
+	docker compose exec openclaw-gateway node dist/index.js
 
 onboard:           ## Run onboarding (for auth setup)
-	docker compose run --rm openclaw-cli onboard
+	docker compose exec openclaw-gateway node dist/index.js onboard
 
 # --- Updates ---
 
