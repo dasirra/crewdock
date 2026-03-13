@@ -64,13 +64,14 @@ else
     echo "[!!] No agents/ directory found."
 fi
 
-# --- Initialize Forge SQLite database ---
-FORGE_DB_SH="workspace/agents/forge/forge-db.sh"
-if [ -f "$FORGE_DB_SH" ]; then
-    chmod +x "$FORGE_DB_SH"
-    "$FORGE_DB_SH" init
-    echo "[ok] Forge tracking database initialized."
-fi
+# --- Initialize agent databases ---
+for db_script in workspace/agents/*/*-db.sh; do
+    [ -f "$db_script" ] || continue
+    agent_name=$(basename "$(dirname "$db_script")")
+    chmod +x "$db_script"
+    "$db_script" init
+    echo "[ok] $agent_name tracking database initialized."
+done
 
 echo ""
 echo "==========================================="
