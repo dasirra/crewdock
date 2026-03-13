@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+# scouter-db.sh — SQLite helper for Scouter state tracking
+# Location: agents/scouter/scouter-db.sh (tracked, copied to workspace on setup)
+
+set -euo pipefail
+
+DB="${SCOUTER_DB:-$HOME/.openclaw/workspace/agents/scouter/scouter.db}"
+
+usage() {
+  cat <<'EOF'
+Usage: scouter-db.sh <command> [args]
+
+Commands:
+  init                                              Create tables if not exist
+  scan <source> <source_name> <hash> <url> <title>  Record scanned item, returns ID
+  is-scanned <hash>                                 Check if hash processed (exit 0=yes, 1=no)
+  opportunity <scanned_item_id> <original> <draft>  Create opportunity (status: pending)
+  resolve <id> <status> [edited_text]               Mark approved/edited/discarded
+  pending                                           List pending opportunities
+  stats [days]                                      Approve/edit/discard rates (default: 30)
+  cleanup [days]                                    Delete scanned_items older than N days (default: 90)
+  lock                                              Set scan lock
+  unlock                                            Release scan lock
+  is-locked                                         Check lock (exit 0=locked, 1=unlocked)
+  last-scan <source_name>                           Get last scan timestamp for a source
+  set-last-scan <source_name>                       Set last scan timestamp to now
+EOF
+  exit 1
+}
+
+db() { sqlite3 "$DB" "$@"; }
+
+esc() { printf '%s' "${1//\'/\'\'}"; }
+
+assert_int() {
+  [[ "$1" =~ ^[0-9]+$ ]] || { echo "Error: expected integer, got '$1'" >&2; exit 1; }
+}
+
+cmd_init() {
+  mkdir -p "$(dirname "$DB")"
+  db <<'SQL'
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS scanned_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    source_name TEXT NOT NULL,
+    content_hash TEXT UNIQUE NOT NULL,
+    url TEXT,
+    title TEXT,
+    scanned_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_scanned_hash ON scanned_items(content_hash);
+CREATE INDEX IF NOT EXISTS idx_scanned_source ON scanned_items(source, source_name);
+CREATE INDEX IF NOT EXISTS idx_scanned_at ON scanned_items(scanned_at);
+
+CREATE TABLE IF NOT EXISTS opportunities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scanned_item_id INTEGER REFERENCES scanned_items(id),
+    original_post TEXT NOT NULL,
+    draft TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    edited_text TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    resolved_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_opp_status ON opportunities(status);
+SQL
+  echo "DB initialized: $DB"
+}
+
+cmd_scan() {
+  local source; source=$(esc "$1")
+  local source_name; source_name=$(esc "$2")
+  local hash; hash=$(esc "$3")
+  local url; url=$(esc "$4")
+  local title; title=$(esc "$5")
+  db "INSERT INTO scanned_items (source, source_name, content_hash, url, title) VALUES ('$source', '$source_name', '$hash', '$url', '$title');"
+  db "SELECT last_insert_rowid();"
+}
+
+cmd_is_scanned() {
+  local hash; hash=$(esc "$1")
+  local count
+  count=$(db "SELECT COUNT(*) FROM scanned_items WHERE content_hash='$hash';")
+  [[ "$count" -gt 0 ]]
+}
+
+cmd_opportunity() {
+  local item_id="$1"; assert_int "$item_id"
+  local original; original=$(esc "$2")
+  local draft; draft=$(esc "$3")
+  db "INSERT INTO opportunities (scanned_item_id, original_post, draft) VALUES ($item_id, '$original', '$draft');"
+  db "SELECT last_insert_rowid();"
+}
+
+cmd_resolve() {
+  local id="$1"; assert_int "$id"
+  local status; status=$(esc "$2")
+  if [[ $# -ge 3 ]]; then
+    local edited; edited=$(esc "$3")
+    db "UPDATE opportunities SET status='$status', edited_text='$edited', resolved_at=datetime('now') WHERE id=$id;"
+  else
+    db "UPDATE opportunities SET status='$status', resolved_at=datetime('now') WHERE id=$id;"
+  fi
+}
+
+cmd_pending() {
+  db -column -header "SELECT o.id, o.original_post, o.draft, o.created_at, s.source, s.url
+      FROM opportunities o
+      JOIN scanned_items s ON o.scanned_item_id = s.id
+      WHERE o.status='pending'
+      ORDER BY o.created_at ASC;"
+}
+
+cmd_stats() {
+  local days="${1:-30}"
+  assert_int "$days"
+  echo "=== Scan stats (last $days days) ==="
+  db -column -header "SELECT source, source_name, COUNT(*) as items
+      FROM scanned_items
+      WHERE scanned_at >= datetime('now', '-$days days')
+      GROUP BY source, source_name
+      ORDER BY items DESC;"
+  echo ""
+  echo "=== Opportunity stats (last $days days) ==="
+  db -column -header "SELECT status, COUNT(*) as count
+      FROM opportunities
+      WHERE created_at >= datetime('now', '-$days days')
+      GROUP BY status;"
+}
+
+cmd_cleanup() {
+  local days="${1:-90}"
+  assert_int "$days"
+  local deleted
+  deleted=$(db "DELETE FROM scanned_items WHERE scanned_at < datetime('now', '-$days days'); SELECT changes();")
+  echo "Cleaned up $deleted scanned items older than $days days."
+}
+
+STALE_LOCK_MINUTES=30
+
+cmd_lock() {
+  db "INSERT OR REPLACE INTO meta (key, value, updated_at) VALUES ('scan_lock', datetime('now'), datetime('now'));"
+}
+
+cmd_unlock() {
+  db "DELETE FROM meta WHERE key='scan_lock';"
+}
+
+cmd_is_locked() {
+  local lock_time
+  lock_time=$(db "SELECT value FROM meta WHERE key='scan_lock';")
+  if [[ -z "$lock_time" ]]; then
+    return 1
+  fi
+  # Check for stale lock
+  local stale
+  stale=$(db "SELECT CASE WHEN datetime('$lock_time', '+$STALE_LOCK_MINUTES minutes') < datetime('now') THEN 1 ELSE 0 END;")
+  if [[ "$stale" == "1" ]]; then
+    db "DELETE FROM meta WHERE key='scan_lock';"
+    echo "Stale lock released (was set at $lock_time)." >&2
+    return 1
+  fi
+  return 0
+}
+
+cmd_last_scan() {
+  local source_name; source_name=$(esc "$1")
+  db "SELECT value FROM meta WHERE key='last_scanned_$source_name';"
+}
+
+cmd_set_last_scan() {
+  local source_name; source_name=$(esc "$1")
+  db "INSERT OR REPLACE INTO meta (key, value, updated_at) VALUES ('last_scanned_$source_name', datetime('now'), datetime('now'));"
+}
+
+[[ $# -lt 1 ]] && usage
+
+COMMAND="$1"; shift
+
+case "$COMMAND" in
+  init)          cmd_init ;;
+  scan)          [[ $# -ge 5 ]] && cmd_scan "$1" "$2" "$3" "$4" "$5" || usage ;;
+  is-scanned)    if [[ $# -ge 1 ]]; then cmd_is_scanned "$1"; else usage; fi ;;
+  opportunity)   [[ $# -ge 3 ]] && cmd_opportunity "$1" "$2" "$3" || usage ;;
+  resolve)       [[ $# -ge 2 ]] && cmd_resolve "$@" || usage ;;
+  pending)       cmd_pending ;;
+  stats)         cmd_stats "${1:-30}" ;;
+  cleanup)       cmd_cleanup "${1:-90}" ;;
+  lock)          cmd_lock ;;
+  unlock)        cmd_unlock ;;
+  is-locked)     cmd_is_locked ;;
+  last-scan)     [[ $# -ge 1 ]] && cmd_last_scan "$1" || usage ;;
+  set-last-scan) [[ $# -ge 1 ]] && cmd_set_last_scan "$1" || usage ;;
+  *)             echo "Unknown command: $COMMAND"; usage ;;
+esac
