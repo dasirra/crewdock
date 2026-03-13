@@ -28,6 +28,13 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get update && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
 
+# xurl CLI (X/Twitter API v2)
+RUN XURL_TAG=$(curl -sf https://api.github.com/repos/xdevplatform/xurl/releases/latest | jq -r '.tag_name') \
+    && [ "$XURL_TAG" != "null" ] && [ -n "$XURL_TAG" ] \
+    && curl -fsSL "https://github.com/xdevplatform/xurl/releases/download/${XURL_TAG}/xurl_Linux_x86_64.tar.gz" \
+      | tar -xz -C /usr/local/bin xurl \
+    && chmod +x /usr/local/bin/xurl
+
 # Ensure home is owned by node
 RUN mkdir -p /home/node/projects \
     && chown -R node:node /home/node
