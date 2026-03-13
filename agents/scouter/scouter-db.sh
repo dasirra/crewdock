@@ -30,7 +30,7 @@ EOF
 
 db() { sqlite3 "$DB" "$@"; }
 
-esc() { printf '%s' "${1//\'/\'\'}"; }
+esc() { printf '%s' "${1//\'/''}"; }
 
 assert_int() {
   [[ "$1" =~ ^[0-9]+$ ]] || { echo "Error: expected integer, got '$1'" >&2; exit 1; }
@@ -60,7 +60,7 @@ CREATE INDEX IF NOT EXISTS idx_scanned_at ON scanned_items(scanned_at);
 
 CREATE TABLE IF NOT EXISTS opportunities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    scanned_item_id INTEGER REFERENCES scanned_items(id),
+    scanned_item_id INTEGER REFERENCES scanned_items(id) ON DELETE SET NULL,
     original_post TEXT NOT NULL,
     draft TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -79,8 +79,7 @@ cmd_scan() {
   local hash; hash=$(esc "$3")
   local url; url=$(esc "$4")
   local title; title=$(esc "$5")
-  db "INSERT INTO scanned_items (source, source_name, content_hash, url, title) VALUES ('$source', '$source_name', '$hash', '$url', '$title');"
-  db "SELECT last_insert_rowid();"
+  db "INSERT INTO scanned_items (source, source_name, content_hash, url, title) VALUES ('$source', '$source_name', '$hash', '$url', '$title'); SELECT last_insert_rowid();"
 }
 
 cmd_is_scanned() {
@@ -94,13 +93,16 @@ cmd_opportunity() {
   local item_id="$1"; assert_int "$item_id"
   local original; original=$(esc "$2")
   local draft; draft=$(esc "$3")
-  db "INSERT INTO opportunities (scanned_item_id, original_post, draft) VALUES ($item_id, '$original', '$draft');"
-  db "SELECT last_insert_rowid();"
+  db "INSERT INTO opportunities (scanned_item_id, original_post, draft) VALUES ($item_id, '$original', '$draft'); SELECT last_insert_rowid();"
 }
 
 cmd_resolve() {
   local id="$1"; assert_int "$id"
   local status; status=$(esc "$2")
+  case "$status" in
+    approved|edited|discarded) ;;
+    *) echo "Error: invalid status '$status'. Must be: approved, edited, discarded" >&2; exit 1 ;;
+  esac
   if [[ $# -ge 3 ]]; then
     local edited; edited=$(esc "$3")
     db "UPDATE opportunities SET status='$status', edited_text='$edited', resolved_at=datetime('now') WHERE id=$id;"
@@ -112,7 +114,7 @@ cmd_resolve() {
 cmd_pending() {
   db -column -header "SELECT o.id, o.original_post, o.draft, o.created_at, s.source, s.url
       FROM opportunities o
-      JOIN scanned_items s ON o.scanned_item_id = s.id
+      LEFT JOIN scanned_items s ON o.scanned_item_id = s.id
       WHERE o.status='pending'
       ORDER BY o.created_at ASC;"
 }
@@ -185,17 +187,17 @@ COMMAND="$1"; shift
 
 case "$COMMAND" in
   init)          cmd_init ;;
-  scan)          [[ $# -ge 5 ]] && cmd_scan "$1" "$2" "$3" "$4" "$5" || usage ;;
+  scan)          if [[ $# -ge 5 ]]; then cmd_scan "$1" "$2" "$3" "$4" "$5"; else usage; fi ;;
   is-scanned)    if [[ $# -ge 1 ]]; then cmd_is_scanned "$1"; else usage; fi ;;
-  opportunity)   [[ $# -ge 3 ]] && cmd_opportunity "$1" "$2" "$3" || usage ;;
-  resolve)       [[ $# -ge 2 ]] && cmd_resolve "$@" || usage ;;
+  opportunity)   if [[ $# -ge 3 ]]; then cmd_opportunity "$1" "$2" "$3"; else usage; fi ;;
+  resolve)       if [[ $# -ge 2 ]]; then cmd_resolve "$@"; else usage; fi ;;
   pending)       cmd_pending ;;
   stats)         cmd_stats "${1:-30}" ;;
   cleanup)       cmd_cleanup "${1:-90}" ;;
   lock)          cmd_lock ;;
   unlock)        cmd_unlock ;;
   is-locked)     cmd_is_locked ;;
-  last-scan)     [[ $# -ge 1 ]] && cmd_last_scan "$1" || usage ;;
-  set-last-scan) [[ $# -ge 1 ]] && cmd_set_last_scan "$1" || usage ;;
+  last-scan)     if [[ $# -ge 1 ]]; then cmd_last_scan "$1"; else usage; fi ;;
+  set-last-scan) if [[ $# -ge 1 ]]; then cmd_set_last_scan "$1"; else usage; fi ;;
   *)             echo "Unknown command: $COMMAND"; usage ;;
 esac
