@@ -11,13 +11,13 @@ Create Scouter, an OpenClaw agent that runs on Discord (channel: "The Watchtower
 ## Constraints
 
 - Same packaging pattern as Forge (`agents/scouter/` with `.example` files for personal config).
-- Uses OpenClaw native tools only: `X-Api` skill for Twitter/X, HTTP/browser tools for RSS/web.
+- Uses OpenClaw native tools and [xurl](https://github.com/xdevplatform/xurl) CLI for Twitter/X, HTTP/browser tools for RSS/web.
 - No automatic publishing. Daniel publishes manually after approving drafts.
 - Must be distributable: anyone can install Scouter, fill in their voice profile and sources, and run it.
 
 ## Prerequisites
 
-- **X-Api skill**: Confirm the X-Api skill exists in the OpenClaw ecosystem and supports reading timelines, searching tweets, and fetching mentions. If unavailable, implement Twitter/X integration via direct HTTP calls to X API v2 with OAuth tokens stored in config.
+- **xurl CLI**: Install [xurl](https://github.com/xdevplatform/xurl) in the Docker image. xurl is the official X Developer Platform CLI for interacting with the X API v2. Scouter uses it for reading timelines, searching tweets, and fetching mentions. Auth tokens are configured via xurl's own auth mechanism.
 - **Gateway cron**: Scouter needs a cron heartbeat registered with the gateway, same mechanism Forge uses.
 - **setup.sh generalization**: Currently hard-codes Forge DB init. Must be updated to support multiple agents.
 
@@ -31,7 +31,7 @@ openclaw-gateway container
 ├── Forge (Discord: The Forge)  autonomous developer
 └── Scouter (Discord: The Watchtower)
     ├── Cron heartbeats ........ per-source configurable schedule
-    ├── X-Api skill ............ Twitter/X feed consumption
+    ├── xurl CLI ............ Twitter/X feed consumption
     ├── HTTP/browser tools ..... RSS and web scraping
     └── SQLite (scouter.db) .... state tracking
 ```
@@ -42,7 +42,7 @@ No additional containers or services required.
 
 Scouter consumes from two channels, each source with its own configurable schedule.
 
-### Twitter/X (via X-Api skill)
+### Twitter/X (via xurl CLI)
 
 - **Curated lists**: accounts Daniel follows in AI/tech (defined as X lists in config)
 - **Keyword searches**: terms like "new LLM", "open source AI", "AI agent", tool names
@@ -70,6 +70,10 @@ Schedule format uses Forge-style strings: `"every-30m"`, `"every-4h"`, `"twice-d
       "keywords": ["new LLM", "open source AI"],
       "mentions": true
     },
+    // Twitter is scanned as a single unit (one schedule for all lists +
+    // keywords + mentions) because X API rate limits are per-app, not
+    // per-endpoint. Splitting would complicate rate limit tracking
+    // without benefit.
     "rss": [
       { "name": "Anthropic Blog", "url": "https://...", "schedule": "twice-daily" },
       { "name": "HackerNews Best", "url": "https://...", "schedule": "every-4h" }
@@ -90,7 +94,7 @@ Web sources are fetched using the gateway's browser tool (headless scraping). RS
 Each source fires on its own schedule. When a scan finds new content:
 
 1. **Collect**: query the source for content since last scan
-2. **Filter**: discard noise (mass retweets, low-signal posts, duplicates via hash check in SQLite)
+2. **Filter**: discard duplicates (hash check in SQLite) and noise. Noise filtering is an LLM classification step defined in `SOUL.md`: the agent evaluates each item for relevance to the configured topics (AI, LLMs, tools, tech) and discards off-topic or low-substance content (e.g., memes, promotional spam, retweets with no added commentary).
 3. **Classify**: assign each piece to one of two categories:
    - **Briefing**: informative content to keep Daniel up to date
    - **Opportunity**: a post where Daniel could engage with value (reply, comment, quote tweet)
@@ -122,9 +126,9 @@ Reports only appear when there is new content. No empty reports. If a scan yield
 ### Approve/Edit/Discard flow
 
 Opportunities are presented as text in Discord. Daniel interacts via text commands:
-Each report assigns sequential numbers (1, 2, 3...) to opportunities within that report. Scouter maps these to SQLite IDs internally.
+Opportunity numbers are globally unique and match the SQLite `opportunities.id`. Each report shows these IDs directly (e.g., #42, #43), so there is no ambiguity across reports.
 
-- **"approve 1"**: marks opportunity #1 from the latest report as approved. Scouter replies with the final text formatted for easy copy-paste into Twitter/X.
+- **"approve 42"**: marks opportunity #42 as approved. Scouter replies with the final text formatted for easy copy-paste into Twitter/X.
 - **"edit 1 [new text]"**: replaces the draft with Daniel's version, marks as edited, and replies with the final text.
 - **"discard 1"**: marks as discarded, no further action.
 
@@ -132,7 +136,7 @@ There is no automatic publishing. The "approve" action simply surfaces the final
 
 ### Concurrency
 
-Scouter runs a single heartbeat (not parallel sessions like Forge). If a scan is still running when the next heartbeat fires, the heartbeat skips (checked via a simple lock flag in SQLite or a "scanning" status). This prevents duplicate reports and SQLite write conflicts.
+Scouter runs a single heartbeat (not parallel sessions like Forge). If a scan is still running when the next heartbeat fires, the heartbeat skips. The lock is stored in a `meta` key-value table in SQLite (`key: "scan_lock", value: timestamp`). `scouter-db.sh lock` sets the timestamp, `unlock` clears it, `is-locked` checks it. A stale lock (older than 30 minutes) is automatically released to prevent deadlocks from crashed scans.
 
 ### Interactive mode (on demand)
 
@@ -141,7 +145,7 @@ Daniel can send commands in Discord:
 - **"analyze [url/post]"**: Scouter analyzes the content and generates a response draft
 - **"write about [topic]"**: generates an original post about a topic
 - **"daily summary"**: consolidated briefing of everything relevant from the day
-- **"add feed [url]"** / **"remove keyword [x]"**: source management (these are explicit user commands, so config mutation is authorized per the same rule as Forge: only when the user explicitly asks)
+- **"add feed [url]"** / **"remove keyword [x]"**: source management (explicit user commands, config mutation authorized per Forge's rule). Config changes take effect on the next heartbeat; in-progress scans are not affected.
 - **"status"**: current config, last scan times, stats
 
 ## Voice and Personal Brand
@@ -170,6 +174,14 @@ Calibration is **manual, informed by data**. Scouter does not autonomously modif
 ## Persistence (SQLite)
 
 `scouter.db` with three tables, managed by `scouter-db.sh` (same pattern as `forge-db.sh`).
+
+### meta
+Key-value store for runtime state.
+- `key` TEXT PRIMARY KEY
+- `value` TEXT
+- `updated_at` DATETIME
+
+Used for: `scan_lock` (timestamp when lock acquired, cleared on unlock), `last_scanned_<source_name>` (timestamp of last successful scan per source).
 
 ### scouter-db.sh commands
 
@@ -220,9 +232,9 @@ agents/scouter/
 ├── SOUL.md                  # Full behavior spec, constraints, commands
 ├── USER.example.md          # Voice profile template (user fills in)
 ├── AGENTS.md                # Workflow summary and config reference
-├── TOOLS.md                 # Available tools and usage notes (X-Api, HTTP, browser)
+├── TOOLS.md                 # Tool reference (see below)
 ├── HEARTBEAT.md             # Cron registration (single heartbeat, e.g. every 15m)
-├── scan-template.md         # Scan cycle instructions with {{source}}, {{schedule}} placeholders
+├── scan-template.md         # Scan cycle template (see below)
 ├── config.example.json      # Source config template
 ├── scouter-db.sh            # SQLite helper (init, insert, query, stats)
 ```
@@ -237,6 +249,24 @@ agents/scouter/
 4. Daniel edits `USER.md` (voice) and `config.json` (sources)
 
 **Note:** `setup.sh` currently hard-codes Forge's DB initialization. It needs to be generalized to loop over all `agents/*/\*-db.sh` scripts, or Scouter's init must be added explicitly.
+
+### TOOLS.md content
+
+Documents the tools available to Scouter and usage notes:
+- **xurl CLI**: how to call xurl for timeline reads, searches, and mentions. Auth setup reference. Rate limit awareness.
+- **HTTP tools**: how to fetch RSS feeds (gateway HTTP tool, XML parsing).
+- **Browser tool**: how to scrape web pages (GitHub Trending, Product Hunt). Selectors or extraction patterns.
+- **scouter-db.sh**: reference to the SQLite helper commands.
+- **Discord**: how to post reports and read user commands.
+
+### scan-template.md content
+
+The template Scouter follows on each heartbeat cycle. Contains the step-by-step instructions for the scan loop (collect, filter, classify, draft, report) with placeholders:
+- `{{due_sources}}`: list of sources due for scanning this cycle
+- `{{user_voice}}`: reference to USER.md for draft generation
+- `{{pending_opportunities}}`: count of unresolved opportunities from previous scans
+
+This is analogous to Forge's `autopilot-template.md` but for scan cycles instead of coding sessions.
 
 ### Config resolution
 
@@ -257,9 +287,9 @@ Anyone can install Scouter by cloning the repo, running `make setup`, filling in
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| X-Api rate limits | Missed tweets | Respect rate limits in scan schedule, cache results in SQLite |
+| xurl rate limits | Missed tweets | Respect rate limits in scan schedule, cache results in SQLite |
 | RSS feeds change format | Broken parsing | Graceful error handling, skip broken feeds, notify in Discord |
 | Low-quality drafts | Daniel wastes time editing | Calibration loop via approve/edit/discard metrics, refine SOUL.md prompts |
 | Too many notifications | Discord noise | Only report when new content exists, configurable thresholds for opportunity detection |
 | Duplicate content across sources | Noise | Content hash dedup in scanned_items table |
-| X-Api skill unavailable | Cannot read Twitter | Fallback: direct HTTP calls to X API v2 using gateway HTTP tools with OAuth tokens from config |
+| xurl CLI not in Docker image | Cannot read Twitter | Add xurl installation to Dockerfile (prerequisite, not runtime risk) |
