@@ -10,7 +10,7 @@ setup:             ## First-time setup: create .env, install agents
 
 # --- Daily operations ---
 
-up:                ## Start all services
+up:                ## Build and start all services
 	docker compose up -d
 
 down:              ## Stop all services
@@ -33,7 +33,7 @@ status:            ## Show running containers
 
 version:           ## Show pinned, running, and latest versions
 	@echo "Pinned:    $(OPENCLAW_VERSION)"
-	@echo "Running:   $$(docker compose exec openclaw-gateway node dist/index.js --version 2>/dev/null || echo 'not running')"
+	@echo "Running:   $$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo 'not running')"
 	@LATEST=$$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
 	  | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))] | first' 2>/dev/null || echo 'unknown'); \
 	echo "Latest:    $$LATEST"
@@ -52,30 +52,50 @@ onboard:           ## Run onboarding (for auth setup)
 # --- Updates ---
 
 update:            ## Check for new OpenClaw version, update and rebuild if newer
-	@CURRENT=$$(cat .openclaw-version 2>/dev/null || echo "0.0.0"); \
-	LATEST=$$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
+	@LATEST=$$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
 	  | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))] | first'); \
 	if [ -z "$$LATEST" ]; then \
 	  echo "ERROR: Could not fetch latest version from Docker Hub"; exit 1; \
 	fi; \
-	echo "Current: $$CURRENT"; \
-	echo "Latest:  $$LATEST"; \
-	CUR_NUM=$$(echo "$$CURRENT" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
-	LAT_NUM=$$(echo "$$LATEST" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
-	if [ "$$LAT_NUM" -le "$$CUR_NUM" ]; then \
-	  echo "Already up to date."; exit 0; \
+	RUNNING=$$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo ""); \
+	PINNED=$$(cat .openclaw-version 2>/dev/null || echo "none"); \
+	if [ -n "$$RUNNING" ]; then \
+	  echo "Running: $$RUNNING"; \
+	  echo "Pinned:  $$PINNED"; \
+	  echo "Latest:  $$LATEST"; \
+	  RUN_NUM=$$(echo "$$RUNNING" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
+	  LAT_NUM=$$(echo "$$LATEST" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
+	  if [ "$$LAT_NUM" -le "$$RUN_NUM" ]; then \
+	    echo "Already up to date."; exit 0; \
+	  fi; \
+	else \
+	  echo "Gateway not running — cannot verify current version."; \
+	  echo "Pinned:  $$PINNED"; \
+	  echo "Latest:  $$LATEST"; \
+	  echo "Forcing rebuild..."; \
 	fi; \
 	echo "Updating to $$LATEST..."; \
 	echo "$$LATEST" > .openclaw-version; \
 	export OPENCLAW_VERSION=$$LATEST; \
-	docker compose down; \
-	docker pull alpine/openclaw:$$LATEST; \
-	docker compose build --no-cache; \
-	docker compose up -d; \
+	docker compose down && \
+	echo "Pulling alpine/openclaw:$$LATEST..." && \
+	docker pull alpine/openclaw:$$LATEST && \
+	echo "Building base image..." && \
+	docker build --no-cache --build-arg OPENCLAW_VERSION=$$LATEST -t openclaw-openclaw-gateway:latest -f Dockerfile . && \
+	echo "Building final image..." && \
+	docker compose build --no-cache && \
+	docker compose up -d --force-recreate; \
 	echo ""; \
 	echo "Updated to $$LATEST. Waiting for gateway to start..."; \
-	sleep 5; \
-	docker compose logs --tail 5 openclaw-gateway
+	sleep 10; \
+	echo "Verifying..."; \
+	VERIFY=$$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "could not verify"); \
+	echo "Running: $$VERIFY"; \
+	if [ "$$VERIFY" = "$$LATEST" ]; then \
+	  echo "Update successful!"; \
+	else \
+	  echo "WARNING: Expected $$LATEST but got $$VERIFY"; \
+	fi
 
 # --- Maintenance ---
 
