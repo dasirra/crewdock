@@ -21,5 +21,12 @@ for AGENT in $DISCORD_AGENTS; do
 
     log "Configuring Discord account for $AGENT..."
     node dist/index.js config set "channels.discord.accounts.$AGENT.token" "\"$TOKEN\"" --json
+
+    # Configure guild allowlist (shared across all agents)
+    if [ -n "${DISCORD_GUILD:-}" ]; then
+        log "Setting guild allowlist for $AGENT (guild: $DISCORD_GUILD)..."
+        node dist/index.js config set "channels.discord.accounts.$AGENT.guilds" "{\"$DISCORD_GUILD\":{}}" --json
+    fi
+
     log "OK"
 done
