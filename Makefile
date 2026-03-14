@@ -1,4 +1,4 @@
-.PHONY: setup up down restart restart-gateway logs logs-all status version shell cli onboard update clean help
+.PHONY: setup up down restart restart-gateway logs logs-all status version shell cli onboard openai-codex update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -69,6 +69,12 @@ cli:               ## Open interactive CLI
 
 onboard:           ## Run onboarding (for auth setup)
 	docker compose exec openclaw-gateway node dist/index.js onboard
+
+openai-codex:      ## Set up OpenAI Codex OAuth and make it the default model
+	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
+	docker compose exec openclaw-gateway node dist/index.js config set agents.defaults.model.primary openai-codex/gpt-5.4
+	docker compose exec openclaw-gateway node dist/index.js config set agents.defaults.model.fallbacks '["anthropic/claude-sonnet-4-6"]' --json
+	@echo "Default model set to openai-codex/gpt-5.4 (fallback: anthropic/claude-sonnet-4-6)"
 
 # --- Updates ---
 
