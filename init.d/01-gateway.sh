@@ -3,7 +3,7 @@
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 
 # Check if gateway token is already configured
-if node dist/index.js config get gateway.token 2>/dev/null | grep -q .; then
+if node dist/index.js config get gateway.auth.token 2>/dev/null | grep -q .; then
     log "Gateway token already configured, skipping."
     return 0
 fi
@@ -17,5 +17,5 @@ else
     log "Generated new gateway token."
 fi
 
-node dist/index.js config set gateway.token "$TOKEN"
+node dist/index.js config set gateway.auth.token "$TOKEN"
 log "OK"
