@@ -14,7 +14,7 @@ Two main components:
 ## Commands
 
 ```bash
-make setup              # First-time: creates .env, directories, installs agents, inits forge.db
+make init               # First-time: creates runtime directories (run before first 'make up')
 make up                 # Build and start services
 make down               # Stop services
 make restart            # Restart all; make restart-gateway for just gateway
@@ -32,7 +32,7 @@ workspace/              # Runtime agent data — installed agents, vault, memory
 projects/               # Cloned repos Forge works on (gitignored)
 ```
 
-Only `agents/`, `docker-compose.yaml`, `Dockerfile`, `Makefile`, `setup.sh`, and `docs/` are tracked in git. Everything under `config/`, `workspace/`, and `projects/` is gitignored runtime data.
+Only `agents/`, `docker-compose.yaml`, `Dockerfile`, `docker-entrypoint.sh`, `init.d/`, `Makefile`, and `docs/` are tracked in git. Everything under `config/`, `workspace/`, and `projects/` is gitignored runtime data.
 
 ## Forge Architecture
 
@@ -85,7 +85,7 @@ Volume mounts map local dirs into the container:
 
 ## Key Patterns
 
-- **Agent installation:** `setup.sh` copies `agents/` to `workspace/agents/`, renames `.example.*` files. Edit templates in `agents/forge/`, run `make setup` to reinstall (skips existing).
+- **Agent installation:** Agent templates are baked into the Docker image at `/opt/openclaw-agents/` and copied to the workspace volume on first boot by `init.d/04-agents.sh`. Edit templates in `agents/forge/`, rebuild the image with `make up` to pick up changes. The init script skips agents whose sentinel file (`SOUL.md`) already exists.
 - **Forge config changes:** Forge can modify `config.json` only when the user explicitly asks. Never autonomously.
 - **Autopilot sessions:** hybrid spawn — `sessions_spawn` (native runtime, no `agentId`) with `thread: true` creates a Discord thread; the native session invokes `acpx` CLI directly for the coding work. This works around the ACP runtime flag-ordering bug.
 - **Concurrency:** checked via `sessions_list` counting `autopilot-*` sessions, capped at `defaults.maxConcurrentSessions`.

@@ -1,12 +1,12 @@
-.PHONY: setup up down restart logs status version shell cli onboard update clean help
+.PHONY: init up down restart restart-gateway logs logs-all status version shell cli onboard update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
 
 # --- Setup ---
 
-setup:             ## First-time setup: create .env, install agents
-	bash setup.sh
+init:              ## Create runtime directories (run once before first 'make up')
+	mkdir -p config/openclaw config/claude workspace projects
 
 # --- Daily operations ---
 
