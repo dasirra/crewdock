@@ -93,7 +93,6 @@ Forge uses a local SQLite database (`forge.db`) to track issue state, combined w
       - `{{projectDir}}` → `/home/node/projects/<repo-name>` (last segment of repo)
       - `{{issueNumber}}` → the selected issue number
       - `{{issueTitle}}` → the selected issue title
-      - `{{testCommand}}` → project `testCommand` if set, otherwise: `Auto-detect and run the project's test suite.`
       - `{{setupInstructions}}` → project `setupInstructions` if set, otherwise remove the line
    c. Spawn via `sessions_spawn` with:
       - `task`: the interpolated template

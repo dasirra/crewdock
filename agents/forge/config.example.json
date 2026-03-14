@@ -18,7 +18,6 @@
       "thread": false,
       "enabled": true,
       "excludeLabels": ["wontfix"],
-      "testCommand": "npm test",
       "setupInstructions": "npm install"
     }
   ]

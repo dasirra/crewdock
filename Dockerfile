@@ -38,6 +38,9 @@ RUN XURL_TAG=$(curl -sf https://api.github.com/repos/xdevplatform/xurl/releases/
 # Agent templates (read-only source for entrypoint to copy into workspace)
 COPY --chown=node:node agents/ /opt/openclaw-agents/
 
+# Claude CLI commands (read-only source for entrypoint to copy into ~/.claude)
+COPY --chown=node:node claude/ /opt/claude/
+
 # Entrypoint and init scripts
 COPY --chown=node:node docker-entrypoint.sh /usr/local/bin/
 COPY --chown=node:node init.d/ /usr/local/lib/openclaw-init.d/
