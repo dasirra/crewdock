@@ -18,4 +18,8 @@ else
 fi
 
 node dist/index.js config set gateway.auth.token "$TOKEN"
+
+# Allow Control UI access from any origin (safe on private/Tailscale networks)
+node dist/index.js config set gateway.controlUi.allowedOrigins '["*"]' --json
+
 log "OK"
