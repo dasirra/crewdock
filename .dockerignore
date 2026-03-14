@@ -1,3 +1,6 @@
 *
 !Dockerfile
 !Dockerfile.local
+!agents/
+!docker-entrypoint.sh
+!init.d/
