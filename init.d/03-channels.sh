@@ -22,10 +22,18 @@ for AGENT in $DISCORD_AGENTS; do
     log "Configuring Discord account for $AGENT..."
     node dist/index.js config set "channels.discord.accounts.$AGENT.token" "\"$TOKEN\"" --json
 
-    # Configure guild allowlist (shared across all agents)
+    # Configure guild allowlist with channel restriction
+    CHANNEL_VAR="DISCORD_${UPPER}_CHANNEL"
+    CHANNEL="${!CHANNEL_VAR:-}"
     if [ -n "${DISCORD_GUILD:-}" ]; then
-        log "Setting guild allowlist for $AGENT (guild: $DISCORD_GUILD)..."
-        node dist/index.js config set "channels.discord.accounts.$AGENT.guilds" "{\"$DISCORD_GUILD\":{}}" --json
+        if [ -n "$CHANNEL" ]; then
+            log "Setting guild allowlist for $AGENT (guild: $DISCORD_GUILD, channel: $CHANNEL)..."
+            node dist/index.js config set "channels.discord.accounts.$AGENT.guilds" \
+                "{\"$DISCORD_GUILD\":{\"channels\":{\"$CHANNEL\":{\"allow\":true}}}}" --json
+        else
+            log "Setting guild allowlist for $AGENT (guild: $DISCORD_GUILD, all channels)..."
+            node dist/index.js config set "channels.discord.accounts.$AGENT.guilds" "{\"$DISCORD_GUILD\":{}}" --json
+        fi
     fi
 
     log "OK"

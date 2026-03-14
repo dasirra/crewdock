@@ -1,12 +1,33 @@
-.PHONY: init up down restart restart-gateway logs logs-all status version shell cli onboard update clean help
+.PHONY: setup up down restart restart-gateway logs logs-all status version shell cli onboard update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
 
 # --- Setup ---
 
-init:              ## Create runtime directories (run once before first 'make up')
-	mkdir -p config/openclaw config/claude workspace projects
+setup:             ## First-time setup: check Docker, create dirs, copy example files, build and start
+	@command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is not installed."; exit 1; }
+	@docker info >/dev/null 2>&1 || { echo "ERROR: Docker daemon is not running."; exit 1; }
+	@docker compose version >/dev/null 2>&1 || { echo "ERROR: docker compose is not available."; exit 1; }
+	@echo "Docker OK."
+	@mkdir -p config/openclaw config/claude workspace projects
+	@echo "Runtime directories created."
+	@# Copy example files (skip if target already exists)
+	@for pair in \
+	  ".env.example:.env" \
+	  "docker-compose.override.example.yaml:docker-compose.override.yaml" \
+	  "Dockerfile.local.example:Dockerfile.local"; do \
+	  src=$${pair%%:*}; dst=$${pair##*:}; \
+	  if [ ! -f "$$src" ]; then continue; fi; \
+	  if [ -f "$$dst" ]; then \
+	    echo "  $$dst already exists, skipping."; \
+	  else \
+	    cp "$$src" "$$dst"; \
+	    echo "  $$dst created from $$src"; \
+	  fi; \
+	done
+	@echo ""
+	@echo "Edit .env with your tokens, then run: make up"
 
 # --- Daily operations ---
 

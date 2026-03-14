@@ -18,6 +18,18 @@ if [ -f "$MARKER" ]; then
     exec "$@"
 fi
 
+# Pre-seed minimal config so the gateway can start with non-loopback bind
+CONFIG_FILE="$HOME/.openclaw/openclaw.json"
+if [ ! -f "$CONFIG_FILE" ] || ! jq -e '.gateway.controlUi.allowedOrigins' "$CONFIG_FILE" >/dev/null 2>&1; then
+    mkdir -p "$(dirname "$CONFIG_FILE")"
+    if [ -f "$CONFIG_FILE" ]; then
+        jq '.gateway.controlUi.allowedOrigins = ["*"]' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    else
+        echo '{"gateway":{"controlUi":{"allowedOrigins":["*"]}}}' > "$CONFIG_FILE"
+    fi
+    echo "[init] Pre-seeded controlUi.allowedOrigins in config."
+fi
+
 # First boot: start gateway in background so CLI commands can talk to it
 echo "[init] First boot detected. Starting gateway for configuration..."
 "$@" &

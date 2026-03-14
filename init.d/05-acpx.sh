@@ -20,10 +20,10 @@ else
     node dist/index.js config set acp.backend acpx
 fi
 
-# Enable thread bindings globally and for Discord
-log "Configuring thread bindings..."
+# Enable thread bindings for forge only
+log "Configuring thread bindings for forge..."
 node dist/index.js config set session.threadBindings.enabled true
-node dist/index.js config set channels.discord.threadBindings.enabled true
-node dist/index.js config set channels.discord.threadBindings.spawnAcpSessions true
+node dist/index.js config set channels.discord.accounts.forge.threadBindings.enabled true
+node dist/index.js config set channels.discord.accounts.forge.threadBindings.spawnAcpSessions true
 
 log "OK"
