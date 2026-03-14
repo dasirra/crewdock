@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # 05-bindings.sh — Bind agents to Discord channels
-
-SCRIPT_NAME="05-bindings"
-log() { echo "[init] $SCRIPT_NAME: $*"; }
+# SCRIPT_NAME, log(), and DISCORD_AGENTS are provided by docker-entrypoint.sh
 
 EXISTING_BINDINGS=$(node dist/index.js agents list --bindings 2>/dev/null || echo "")
 
-for AGENT in forge scouter; do
+for AGENT in $DISCORD_AGENTS; do
     UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
     CHANNEL_VAR="DISCORD_${UPPER}_CHANNEL"
     TOKEN_VAR="DISCORD_${UPPER}_TOKEN"

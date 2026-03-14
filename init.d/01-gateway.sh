@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # 01-gateway.sh — Gateway token configuration
-
-SCRIPT_NAME="01-gateway"
-log() { echo "[init] $SCRIPT_NAME: $*"; }
+# SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 
 # Check if gateway token is already configured
 if node dist/index.js config get gateway.token 2>/dev/null | grep -q .; then

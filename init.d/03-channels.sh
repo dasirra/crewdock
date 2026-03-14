@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # 03-channels.sh — Add Discord channels (one per bot token)
-
-SCRIPT_NAME="03-channels"
-log() { echo "[init] $SCRIPT_NAME: $*"; }
+# SCRIPT_NAME, log(), and DISCORD_AGENTS are provided by docker-entrypoint.sh
 
 EXISTING_CHANNELS=$(node dist/index.js channels list 2>/dev/null || echo "")
 
-for AGENT in forge scouter; do
+for AGENT in $DISCORD_AGENTS; do
     UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
     TOKEN_VAR="DISCORD_${UPPER}_TOKEN"
     TOKEN="${!TOKEN_VAR:-}"

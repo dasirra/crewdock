@@ -7,6 +7,12 @@ set -euo pipefail
 INIT_DIR="/usr/local/lib/openclaw-init.d"
 MARKER="$HOME/.openclaw/workspace/.initialized"
 
+# Shared helpers for init scripts (sourced into same shell)
+log() { echo "[init] $SCRIPT_NAME: $*"; }
+
+# Agents with Discord integration (used by 03-channels.sh and 05-bindings.sh)
+DISCORD_AGENTS="forge scouter"
+
 if [ -f "$MARKER" ]; then
     echo "[init] Already initialized. Starting gateway..."
 else
@@ -14,6 +20,7 @@ else
 
     for script in "$INIT_DIR"/*.sh; do
         [ -f "$script" ] || continue
+        SCRIPT_NAME="$(basename "$script" .sh)"
         echo "[init] Running $(basename "$script")..."
         # shellcheck source=/dev/null
         source "$script"

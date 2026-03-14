@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # 02-models.sh — LLM provider auth (Anthropic)
-
-SCRIPT_NAME="02-models"
-log() { echo "[init] $SCRIPT_NAME: $*"; }
+# SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 
 if [ -z "${ANTHROPIC_OAUTH_TOKEN:-}" ]; then
     log "ERROR: ANTHROPIC_OAUTH_TOKEN is not set."

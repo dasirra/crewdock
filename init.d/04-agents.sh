@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # 04-agents.sh — Install agents and initialize databases
-
-SCRIPT_NAME="04-agents"
-log() { echo "[init] $SCRIPT_NAME: $*"; }
+# SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 
 AGENT_TEMPLATES="/opt/openclaw-agents"
 WORKSPACE="$HOME/.openclaw/workspace"

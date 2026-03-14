@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # 06-claude.sh — Claude CLI auth configuration
-
-SCRIPT_NAME="06-claude"
-log() { echo "[init] $SCRIPT_NAME: $*"; }
+# SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 
 CLAUDE_DIR="$HOME/.claude"
 
@@ -20,9 +18,9 @@ fi
 log "Configuring Claude CLI auth..."
 mkdir -p "$CLAUDE_DIR"
 
-# The Dockerfile creates settings.json in the image layer, but the bind mount
-# (./config/claude:/home/node/.claude) masks it. We recreate it here.
-# Auth uses ANTHROPIC_AUTH_TOKEN env var (set in docker-compose.yaml), no credential file needed.
+# The bind mount (./config/claude:/home/node/.claude) starts empty, so we
+# create settings.json here. Auth uses ANTHROPIC_AUTH_TOKEN env var
+# (set in docker-compose.yaml), no credential file needed.
 cat > "$CLAUDE_DIR/settings.json" <<'SETTINGS'
 {"plugins":{"allow":["acpx"]}}
 SETTINGS

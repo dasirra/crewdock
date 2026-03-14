@@ -34,5 +34,4 @@ services:
       - ./workspace:/home/node/.openclaw/workspace
       - ./projects:/home/node/projects
       - ./config/claude:/home/node/.claude
-    entrypoint: ["docker-entrypoint.sh"]
     command: ["node", "dist/index.js", "gateway", "--allow-unconfigured"]
