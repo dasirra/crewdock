@@ -26,6 +26,9 @@ else
         source "$script"
     done
 
+    # Apply any config migrations flagged by the CLI
+    node dist/index.js doctor --fix 2>/dev/null || true
+
     mkdir -p "$(dirname "$MARKER")"
     touch "$MARKER"
     echo "[init] Setup complete. Starting gateway..."
