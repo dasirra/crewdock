@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-# 05-bindings.sh — Bind agents to Discord channels
+# 05-bindings.sh — Bind agents to Discord accounts
 # SCRIPT_NAME, log(), and DISCORD_AGENTS are provided by docker-entrypoint.sh
 
-EXISTING_BINDINGS=$(node dist/index.js agents list --bindings 2>/dev/null || echo "")
+EXISTING_BINDINGS=$(node dist/index.js agents bindings --json 2>/dev/null || echo "")
 
 for AGENT in $DISCORD_AGENTS; do
     UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
-    CHANNEL_VAR="DISCORD_${UPPER}_CHANNEL"
     TOKEN_VAR="DISCORD_${UPPER}_TOKEN"
-    CHANNEL="${!CHANNEL_VAR:-}"
     TOKEN="${!TOKEN_VAR:-}"
 
-    if [ -z "$TOKEN" ] || [ -z "$CHANNEL" ]; then
+    if [ -z "$TOKEN" ]; then
         log "Skipping $AGENT (Discord not configured)"
         continue
     fi
@@ -21,7 +19,7 @@ for AGENT in $DISCORD_AGENTS; do
         continue
     fi
 
-    log "Binding $AGENT to Discord channel..."
+    log "Binding $AGENT to Discord account..."
     node dist/index.js agents bind --agent "$AGENT" --bind "discord:$AGENT"
     log "OK"
 done

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# 03-channels.sh — Add Discord channels (one per bot token)
+# 03-channels.sh — Configure Discord accounts (one per bot token)
 # SCRIPT_NAME, log(), and DISCORD_AGENTS are provided by docker-entrypoint.sh
-
-EXISTING_CHANNELS=$(node dist/index.js channels list 2>/dev/null || echo "")
 
 for AGENT in $DISCORD_AGENTS; do
     UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
@@ -14,12 +12,14 @@ for AGENT in $DISCORD_AGENTS; do
         continue
     fi
 
-    if echo "$EXISTING_CHANNELS" | grep -q "$AGENT"; then
-        log "Discord channel for $AGENT already exists, skipping."
+    # Check if this account is already configured
+    EXISTING=$(node dist/index.js config get "channels.discord.accounts.$AGENT.token" 2>/dev/null || echo "")
+    if [ -n "$EXISTING" ]; then
+        log "Discord account '$AGENT' already configured, skipping."
         continue
     fi
 
-    log "Adding Discord channel for $AGENT..."
-    node dist/index.js channels add --channel discord --account "$AGENT" --token "$TOKEN"
+    log "Configuring Discord account for $AGENT..."
+    node dist/index.js config set "channels.discord.accounts.$AGENT.token" "\"$TOKEN\"" --json
     log "OK"
 done
