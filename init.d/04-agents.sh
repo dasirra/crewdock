@@ -35,6 +35,12 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
         mv "$example" "$real"
     done
 
+    # Clear projects list (user adds repos via Discord)
+    if [ -f "$target/config.json" ]; then
+        jq '.projects = []' "$target/config.json" > "$target/config.json.tmp" \
+            && mv "$target/config.json.tmp" "$target/config.json"
+    fi
+
     log "OK"
 done
 
