@@ -89,15 +89,11 @@ Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and sessi
 
 For each selected issue:
 
-1. Read `autopilot-template.md` from your workspace.
-2. Replace placeholders:
-   - `{{repo}}` — project `repo`
-   - `{{branch}}` — project `branch`
+1. Read `autopilot-template.md` from your workspace and replace placeholders:
+   - `{{repo}}`, `{{branch}}`, `{{issueNumber}}`, `{{issueTitle}}`
    - `{{projectDir}}` — `/home/node/projects/<repo-name>`
-   - `{{issueNumber}}` — issue number
-   - `{{issueTitle}}` — issue title
    - `{{setupInstructions}}` — project `setupInstructions` if set, otherwise remove the line
-3. Spawn via `sessions_spawn`:
+2. Spawn via `sessions_spawn`:
    - `task`: the interpolated template
    - `agentId`: project `agentId` > `defaults.agentId` > `"claude"`
    - `model`: project `model` > `defaults.model` > omit if `null`
@@ -105,12 +101,9 @@ For each selected issue:
    - `thread`: project `thread` > `defaults.thread` > `true`
    - `label`: `"autopilot-<repo-name>-<issue-number>"`
    - `cwd`: `"/home/node/projects/<repo-name>"`
-4. Run `forge-db.sh start <repo> <number> <session_id>`.
-5. Stop spawning if `defaults.maxConcurrentSessions` is reached.
+3. Stop spawning if `defaults.maxConcurrentSessions` is reached.
 
-On task completion, the spawned session must:
-- Success (PR created): `forge-db.sh done <repo> <number> <pr_number>`, then `sessions_stop`
-- Failure: `forge-db.sh fail <repo> <number> "<error>"`, then `sessions_stop`
+The ACP session handles its full lifecycle autonomously (DB tracking, build, cleanup, session stop) as defined in `autopilot-template.md`. Forge does not manage spawned sessions after launch.
 
 ## Config resolution
 
