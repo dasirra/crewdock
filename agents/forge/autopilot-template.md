@@ -29,7 +29,17 @@ This handles worktree creation, planning, agent dispatch, implementation, PR cre
 
 ## After completion
 
-Once `/build` finishes (whether it succeeded or failed), update the tracking database:
+Once `/build` finishes (whether it succeeded or failed):
+
+1. **Clean up the worktree** (if one was created):
+```bash
+cd {{projectDir}}
+git worktree list
+# Remove any worktree that was created for this issue
+git worktree remove <worktree-path> --force
+```
+
+2. **Update the tracking database**:
 
 **On success** (PR was created):
 ```bash
@@ -41,7 +51,7 @@ Once `/build` finishes (whether it succeeded or failed), update the tracking dat
 /home/node/.openclaw/workspace/agents/forge/forge-db.sh fail {{repo}} {{issueNumber}} "<short error description>"
 ```
 
-Then stop this session:
+3. **Stop this session**:
 ```
 sessions_stop
 ```

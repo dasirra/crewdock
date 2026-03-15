@@ -83,7 +83,7 @@ Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and sessi
    - **Open PRs** — skip issues that already have an open PR (check branch names via `gh pr list`)
    - **Active sessions** — skip issues with an active ACP session (match `autopilot-<repo>-<number>` labels via `sessions_list`)
 
-4. Select from filtered list, oldest first, up to available slots.
+4. Select the single oldest eligible issue. Only one issue is spawned per heartbeat cycle.
 
 ## Spawning ACP sessions
 
