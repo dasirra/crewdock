@@ -41,6 +41,17 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
             && mv "$target/config.json.tmp" "$target/config.json"
     fi
 
+    # Configure heartbeat target if agent has a Discord channel
+    UPPER=$(echo "$agent_name" | tr '[:lower:]' '[:upper:]')
+    CHANNEL_VAR="DISCORD_${UPPER}_CHANNEL"
+    CHANNEL="${!CHANNEL_VAR:-}"
+    if [ -n "$CHANNEL" ]; then
+        log "Configuring heartbeat target for $agent_name (channel: $CHANNEL)..."
+        node dist/index.js config set "agents.list[id=$agent_name].heartbeat.every" '"0m"' --json
+        node dist/index.js config set "agents.list[id=$agent_name].heartbeat.target" '"discord"' --json
+        node dist/index.js config set "agents.list[id=$agent_name].heartbeat.to" "\"channel:$CHANNEL\"" --json
+    fi
+
     log "OK"
 done
 
