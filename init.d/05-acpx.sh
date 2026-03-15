@@ -9,6 +9,7 @@ else
     log "Installing acpx plugin..."
     node dist/index.js plugins install acpx
     node dist/index.js config set plugins.entries.acpx.enabled true
+    node dist/index.js config set plugins.entries.acpx.config.permissionMode approve-all
 fi
 
 # Enable ACP with acpx backend

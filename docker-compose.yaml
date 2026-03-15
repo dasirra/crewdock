@@ -36,4 +36,5 @@ services:
       - ./workspace:/home/node/.openclaw/workspace
       - ./projects:/home/node/projects
       - ./config/claude:/home/node/.claude
+      - ./config/gh:/home/node/.config/gh
     command: ["node", "dist/index.js", "gateway", "--allow-unconfigured"]

@@ -29,7 +29,7 @@ for AGENT in $DISCORD_AGENTS; do
         if [ -n "$CHANNEL" ]; then
             log "Setting guild allowlist for $AGENT (guild: $DISCORD_GUILD, channel: $CHANNEL)..."
             node dist/index.js config set "channels.discord.accounts.$AGENT.guilds" \
-                "{\"$DISCORD_GUILD\":{\"channels\":{\"$CHANNEL\":{\"allow\":true}}}}" --json
+                "{\"$DISCORD_GUILD\":{\"channels\":{\"$CHANNEL\":{\"allow\":true,\"requireMention\":false}}}}" --json
         else
             log "Setting guild allowlist for $AGENT (guild: $DISCORD_GUILD, all channels)..."
             node dist/index.js config set "channels.discord.accounts.$AGENT.guilds" "{\"$DISCORD_GUILD\":{}}" --json

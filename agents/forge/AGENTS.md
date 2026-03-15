@@ -1,142 +1,140 @@
 # AGENTS.md - Forge
 
-## Workflow
+## Two modes of operation
 
-### Cron cycle (every 15 minutes, 24/7)
+### 1. Cron cycle (heartbeat)
 
-1. Read `SOUL.md` for identity and constraints.
-2. Read `config.json` for the project list and defaults.
-3. Check global concurrency via `sessions_list`: count active `autopilot-*` sessions. If `defaults.maxConcurrentSessions` reached, skip.
-4. Run `forge-db.sh init` to ensure the tracking database exists.
-5. For each enabled project whose schedule matches the current time:
-   a. Run `forge-db.sh check` for each open issue to determine eligibility (see SOUL.md).
-   b. Read `autopilot-template.md`, interpolate placeholders.
-   c. Spawn an ACP session via `sessions_spawn`. Resolve `agentId`, `model`, `thread` from project config → defaults → built-in fallbacks.
-   d. Run `forge-db.sh start` to mark the issue in_progress.
-   e. Stop spawning if the session limit is reached.
-6. On session completion, run `forge-db.sh done` or `forge-db.sh fail`.
-7. Exit immediately. The spawned sessions continue autonomously.
+On each heartbeat tick:
 
-### Interactive (messages)
+1. Read `config.json`.
+2. Check global concurrency: count active `autopilot-*` sessions via `sessions_list`. If `defaults.maxConcurrentSessions` reached, skip this cycle.
+3. For each project where `enabled` is `true` and `schedule` matches the current time (in `timezone`), run the issue selection process.
+4. For each selected issue, spawn an ACP session.
+5. Exit. The ACP sessions continue autonomously.
 
-Forge responds to conversational commands from the user:
-- `run <repo>` — trigger immediately
-- `run <repo> #<number>` — trigger specific issue
-- `add/remove <repo>` — manage project list
-- `pause/resume <repo>` — toggle enabled state
-- `set <repo> schedule/agent/model <value>` — change project settings
-- `set max-sessions/default <key> <value>` — change global settings
-- `status` — overview of all repos and active sessions
-- `history <repo>` — list all tracked issues (from forge.db)
-- `stats` — summary counts by status (from forge.db)
-- `retry <repo> #<number>` — reset issue to queued and spawn
-- `skip <repo> #<number>` — mark issue as skipped
+### 2. Interactive (messages from the user)
 
-See SOUL.md for the full command reference.
+**Heartbeat control:**
+- "start" — set `agents.list[].heartbeat.every` to `"15m"` in `openclaw.json` via `config set`
+- "stop" — set `heartbeat.every` to `"0m"`
 
-## Schedule
+**Triggering:**
+- "run `<repo>`" — run issue selection and spawn sessions immediately, regardless of schedule
+- "run `<repo>` #`<number>`" — spawn a session for that specific issue, skip selection
+- "run all" — trigger all enabled repos now
 
-Single cron job fires every 15 minutes, 24/7. Per-repo schedules in `config.json` control which repos are active at any given time. Unset schedules fall back to `defaults.schedule`.
+**Managing repos:**
+- "add `<owner/repo>`" or "add `<owner/repo>` on `<branch>`" — add a project to config.json (inherits all defaults; branch defaults to `develop` if not specified)
+- "remove `<repo>`" — remove a project from config.json
+- "pause `<repo>`" — set `enabled: false`
+- "resume `<repo>`" — set `enabled: true`
 
-Schedule format:
-- `on-demand` — manual trigger only
-- `always` — every cron cycle
-- `HH-HH` — hour range (e.g., `22-07`)
-- `HH-HH weekdays` — weekdays only
-- `HH-HH weekends` — weekends only
+**Scheduling:**
+- "set `<repo>` schedule `<schedule>`" — update the schedule
+- "set `<repo>` agent `<agentId>`" — change the agent
+- "set `<repo>` model `<model>`" — change the model
 
-## Process management
+**Global settings:**
+- "set max-sessions `<n>`" — update `defaults.maxConcurrentSessions`
+- "set default agent `<agentId>`" — update `defaults.agentId`
+- "set default model `<model>`" — update `defaults.model`
+- "set default branch `<branch>`" — update `defaults.branch`
+- "set default thread `<true|false>`" — update `defaults.thread`
 
-- Active sessions checked via `sessions_list`, matched by `autopilot-*` labels
-- Issue state tracked in SQLite (`forge.db`) — replaces fragile branch-name parsing
-- Results announced via OpenClaw completion events
-- Concurrency: respect `defaults.maxConcurrentSessions`. Multiple per repo allowed.
-- Labels are unique per issue: `autopilot-<repo-name>-<issue-number>`
+**Monitoring:**
+- "status" — show all projects, schedules, enabled state, and active ACP sessions
+- "history `<repo>`" — list all tracked issues (uses `forge-db.sh list --repo <repo>`)
+- "stats" — summary counts by status (uses `forge-db.sh stats`)
 
-## SQLite tracking database
+**Manual overrides:**
+- "retry `<repo>` #`<number>`" — reset issue to queued and spawn a new session
+- "skip `<repo>` #`<number>`" — mark issue as skipped
 
-Location: `$HOME/.openclaw/workspace/agents/forge/forge.db`
-Helper: `$HOME/.openclaw/workspace/agents/forge/forge-db.sh`
+For any command, `<repo>` can be just the repo name (e.g., `my-app`) or full `owner/repo`.
 
-Status values: `queued`, `in_progress`, `done`, `failed`, `skipped`
+## Schedule format
 
-The database prevents:
-- Duplicate sessions for the same issue
-- Infinite retry loops on failed issues (respects `max_attempts`)
-- Re-processing issues that are already done or skipped
-- Loss of state across restarts
+- `on-demand` — only runs when manually triggered
+- `always` — runs on every heartbeat
+- `HH-HH` — active during this hour range (e.g., `22-07` wraps around midnight)
+- `HH-HH weekdays` — Monday through Friday only
+- `HH-HH weekends` — Saturday and Sunday only
 
-## Config
+All times are interpreted in the `timezone` from config.json.
 
-`config.json`:
-```json
-{
-  "timezone": "Europe/Madrid",
-  "defaults": {
-    "agentId": "claude",
-    "model": null,
-    "schedule": "on-demand",
-    "thread": true,
-    "maxConcurrentSessions": 4,
-    "maxAttempts": 3
-  },
-  "projects": [
-    {
-      "repo": "owner/repo",
-      "branch": "main",
-      "agentId": "claude",
-      "model": "claude-sonnet-4-5-20250514",
-      "schedule": "22-07",
-      "thread": false,
-      "enabled": true,
-      "excludeLabels": ["wontfix"],
-      "testCommand": "npm test",
-      "setupInstructions": "npm install"
-    }
-  ]
-}
-```
+## Issue selection
 
-**Global settings** (`defaults`):
-| Field | Default | Description |
-|---|---|---|
-| `agentId` | `"claude"` | ACP agent for sessions |
-| `model` | `null` | Model override (`null` = agent's default) |
-| `schedule` | `"on-demand"` | Default schedule for new projects |
-| `thread` | `true` | Create a thread per session |
-| `maxConcurrentSessions` | `4` | Max active autopilot sessions |
-| `maxAttempts` | `3` | Max retry attempts per issue |
+Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and session checks.
 
-**Per-project fields:**
-| Field | Required | Description |
-|---|---|---|
-| `repo` | Yes | GitHub repo (`owner/name`) |
-| `branch` | Yes | Base branch to work from |
-| `agentId` | No | Override default agent |
-| `model` | No | Override default model |
-| `schedule` | No | Override default schedule |
-| `thread` | No | Override default thread setting |
-| `enabled` | No | Toggle on/off (default: `true`) |
-| `excludeLabels` | No | Issue labels to skip |
-| `testCommand` | No | Custom test command (default: auto-detect) |
-| `setupInstructions` | No | Run before each session |
+1. Run `forge-db.sh init` to ensure the DB exists.
 
-## Autopilot template
+2. Fetch open issues oldest first:
+   ```bash
+   gh issue list --repo <repo> --state open --sort created --json number,title,labels,createdAt --limit 30
+   ```
 
-`autopilot-template.md` defines the task sent to each ACP session:
-- Scans repo for custom commands, agents, and skills
-- Discovers and filters GitHub issues (oldest first)
-- Creates a worktree per issue
-- Implements using a team of agents (repo-defined or ad-hoc)
-- Tests, commits, pushes, creates PR
-- Cleans up the worktree
+3. Filter out issues:
+   - **SQLite state** via `forge-db.sh check <repo> <number>`:
+     - `done`, `in_progress`, `skipped` — skip
+     - `failed` with `attempts >= max_attempts` — skip
+     - `queued` or `failed` (retryable) — eligible
+     - `new` (not in db) — run `forge-db.sh queue <repo> <number> "<title>"`, then eligible
+   - **Exclude labels** — skip issues with labels in `excludeLabels`
+   - **Open PRs** — skip issues that already have an open PR (check branch names via `gh pr list`)
+   - **Active sessions** — skip issues with an active ACP session (match `autopilot-<repo>-<number>` labels via `sessions_list`)
 
-## Reporting
+4. Select from filtered list, oldest first, up to available slots.
 
-Forge checks for completed sessions on each cron cycle and announces results.
-For manual queries: message Forge with "status", "history <repo>", or "stats".
+## Spawning ACP sessions
+
+For each selected issue:
+
+1. Read `autopilot-template.md` from your workspace.
+2. Replace placeholders:
+   - `{{repo}}` — project `repo`
+   - `{{branch}}` — project `branch`
+   - `{{projectDir}}` — `/home/node/projects/<repo-name>`
+   - `{{issueNumber}}` — issue number
+   - `{{issueTitle}}` — issue title
+   - `{{setupInstructions}}` — project `setupInstructions` if set, otherwise remove the line
+3. Spawn via `sessions_spawn`:
+   - `task`: the interpolated template
+   - `agentId`: project `agentId` > `defaults.agentId` > `"claude"`
+   - `model`: project `model` > `defaults.model` > omit if `null`
+   - `mode`: `"session"`
+   - `thread`: project `thread` > `defaults.thread` > `true`
+   - `label`: `"autopilot-<repo-name>-<issue-number>"`
+   - `cwd`: `"/home/node/projects/<repo-name>"`
+4. Run `forge-db.sh start <repo> <number> <session_id>`.
+5. Stop spawning if `defaults.maxConcurrentSessions` is reached.
+
+On task completion, the spawned session must:
+- Success (PR created): `forge-db.sh done <repo> <number> <pr_number>`, then `sessions_stop`
+- Failure: `forge-db.sh fail <repo> <number> "<error>"`, then `sessions_stop`
+
+## Config resolution
+
+Every setting resolves: project-level > `defaults` block > built-in fallback.
+
+| Setting | Fallback |
+|---|---|
+| `branch` | `"develop"` |
+| `agentId` | `"claude"` |
+| `model` | `null` (agent's default) |
+| `schedule` | `"on-demand"` |
+| `thread` | `true` |
+| `maxConcurrentSessions` | `4` |
+| `maxAttempts` | `3` |
+| `enabled` | `true` |
+
+## SQLite tracking
+
+Helper: `forge-db.sh` (in workspace). Status values: `queued`, `in_progress`, `done`, `failed`, `skipped`.
+
+Prevents: duplicate sessions, infinite retries (respects `max_attempts`), re-processing done/skipped issues, state loss across restarts.
 
 ## Safety
+
 - Forge modifies `config.json` only when the user explicitly asks.
 - If config.json is missing or empty, exit silently on cron.
 - Issues are never retried beyond `max_attempts` without explicit `retry` command.
