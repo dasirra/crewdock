@@ -12,26 +12,23 @@ for AGENT in $DISCORD_AGENTS; do
         continue
     fi
 
-    # Check if this account is already configured
+    # Set token if not already configured
     EXISTING=$(node dist/index.js config get "channels.discord.accounts.$AGENT.token" 2>/dev/null || echo "")
-    if [ -n "$EXISTING" ]; then
-        log "Discord account '$AGENT' already configured, skipping."
-        continue
+    if [ -z "$EXISTING" ]; then
+        log "Configuring Discord account for $AGENT..."
+        node dist/index.js config set "channels.discord.accounts.$AGENT.token" "\"$TOKEN\"" --json
     fi
 
-    log "Configuring Discord account for $AGENT..."
-    node dist/index.js config set "channels.discord.accounts.$AGENT.token" "\"$TOKEN\"" --json
-
-    # Configure guild allowlist with channel restriction
+    # Always ensure guild allowlist is configured (idempotent)
     CHANNEL_VAR="DISCORD_${UPPER}_CHANNEL"
     CHANNEL="${!CHANNEL_VAR:-}"
     if [ -n "${DISCORD_GUILD:-}" ]; then
         if [ -n "$CHANNEL" ]; then
-            log "Setting guild allowlist for $AGENT (guild: $DISCORD_GUILD, channel: $CHANNEL)..."
+            log "Ensuring guild allowlist for $AGENT (guild: $DISCORD_GUILD, channel: $CHANNEL)..."
             node dist/index.js config set "channels.discord.accounts.$AGENT.guilds" \
                 "{\"$DISCORD_GUILD\":{\"channels\":{\"$CHANNEL\":{\"allow\":true,\"requireMention\":false}}}}" --json
         else
-            log "Setting guild allowlist for $AGENT (guild: $DISCORD_GUILD, all channels)..."
+            log "Ensuring guild allowlist for $AGENT (guild: $DISCORD_GUILD, all channels)..."
             node dist/index.js config set "channels.discord.accounts.$AGENT.guilds" "{\"$DISCORD_GUILD\":{}}" --json
         fi
     fi

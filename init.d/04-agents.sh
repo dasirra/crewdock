@@ -46,10 +46,17 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
     CHANNEL_VAR="DISCORD_${UPPER}_CHANNEL"
     CHANNEL="${!CHANNEL_VAR:-}"
     if [ -n "$CHANNEL" ]; then
-        log "Configuring heartbeat target for $agent_name (channel: $CHANNEL)..."
-        node dist/index.js config set "agents.list[id=$agent_name].heartbeat.every" '"0m"' --json
-        node dist/index.js config set "agents.list[id=$agent_name].heartbeat.target" '"discord"' --json
-        node dist/index.js config set "agents.list[id=$agent_name].heartbeat.to" "\"channel:$CHANNEL\"" --json
+        # Find the agent's index in agents.list
+        AGENT_INDEX=$(node dist/index.js config get agents.list 2>/dev/null \
+            | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(d.findIndex(a=>a.id==='$agent_name'))" 2>/dev/null)
+        if [ -n "$AGENT_INDEX" ] && [ "$AGENT_INDEX" != "-1" ]; then
+            log "Configuring heartbeat target for $agent_name (index: $AGENT_INDEX, channel: $CHANNEL)..."
+            node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.every" '"0m"' --json
+            node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.target" '"discord"' --json
+            node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.to" "\"channel:$CHANNEL\"" --json
+        else
+            log "WARNING: could not find agent index for $agent_name, skipping heartbeat config"
+        fi
     fi
 
     log "OK"
