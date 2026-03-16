@@ -1,0 +1,13 @@
+{
+  "timezone": "Europe/Madrid",
+  "briefing": {
+    "enabled": true,
+    "cron": "0 6 * * *",
+    "sections": ["calendar", "email", "tasks", "reminders"]
+  },
+  "confirmation": {
+    "read": false,
+    "write": true
+  },
+  "capabilities": ["gws"]
+}
