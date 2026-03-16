@@ -12,9 +12,6 @@ log() { echo "[init] $SCRIPT_NAME: $*"; }
 # Agents with Discord integration (used by 03-channels.sh and 05-bindings.sh)
 DISCORD_AGENTS="forge scouter alfred"
 
-# Clean up legacy first-boot marker (no longer used)
-rm -f "$HOME/.openclaw/workspace/.initialized"
-
 # Pre-seed minimal config so the gateway can start with non-loopback bind
 CONFIG_FILE="$HOME/.openclaw/openclaw.json"
 if [ ! -f "$CONFIG_FILE" ] || ! jq -e '.gateway.controlUi.allowedOrigins' "$CONFIG_FILE" >/dev/null 2>&1; then
