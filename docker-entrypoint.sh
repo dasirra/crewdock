@@ -10,7 +10,7 @@ INIT_DIR="/usr/local/lib/openclaw-init.d"
 log() { echo "[init] $SCRIPT_NAME: $*"; }
 
 # Agents with Discord integration (used by 03-channels.sh and 05-bindings.sh)
-DISCORD_AGENTS="forge scouter"
+DISCORD_AGENTS="forge scouter alfred"
 
 # Clean up legacy first-boot marker (no longer used)
 rm -f "$HOME/.openclaw/workspace/.initialized"
