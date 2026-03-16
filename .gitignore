@@ -19,6 +19,9 @@ tailscale-serve.json
 docker-compose.override.yaml
 Dockerfile.local
 
+# Superpowers specs and plans (local only)
+docs/superpowers/
+
 # OS files
 .DS_Store
 Thumbs.db

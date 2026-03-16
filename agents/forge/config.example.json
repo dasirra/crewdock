@@ -1,6 +1,7 @@
 {
   "timezone": "Europe/Madrid",
   "defaults": {
+    "branch": "develop",
     "agentId": "claude",
     "model": null,
     "schedule": "on-demand",
@@ -11,14 +12,13 @@
   "projects": [
     {
       "repo": "owner/repo",
-      "branch": "main",
+      "branch": "develop",
       "agentId": "claude",
       "model": null,
       "schedule": "22-07",
       "thread": false,
       "enabled": true,
       "excludeLabels": ["wontfix"],
-      "testCommand": "npm test",
       "setupInstructions": "npm install"
     }
   ]

@@ -1,5 +1,3 @@
-# HEARTBEAT.md
+Run the cron cycle. Follow AGENTS.md section "Cron cycle (heartbeat)" exactly.
 
-# Keep this file empty (or with only comments) to skip heartbeat API calls.
-
-# Add tasks below when you want the agent to check something periodically.
+If `config.json` has no projects or all are disabled/outside schedule, reply `HEARTBEAT_OK` and exit.

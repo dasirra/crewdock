@@ -1,12 +1,33 @@
-.PHONY: setup up down restart logs status version shell cli onboard update clean help
+.PHONY: setup up down restart restart-gateway logs logs-all status version shell cli onboard openai-codex update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
 
 # --- Setup ---
 
-setup:             ## First-time setup: create .env, install agents
-	bash setup.sh
+setup:             ## First-time setup: check Docker, create dirs, copy example files, build and start
+	@command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is not installed."; exit 1; }
+	@docker info >/dev/null 2>&1 || { echo "ERROR: Docker daemon is not running."; exit 1; }
+	@docker compose version >/dev/null 2>&1 || { echo "ERROR: docker compose is not available."; exit 1; }
+	@echo "Docker OK."
+	@mkdir -p config/openclaw config/claude config/gh workspace projects
+	@echo "Runtime directories created."
+	@# Copy example files (skip if target already exists)
+	@for pair in \
+	  ".env.example:.env" \
+	  "docker-compose.override.example.yaml:docker-compose.override.yaml" \
+	  "Dockerfile.local.example:Dockerfile.local"; do \
+	  src=$${pair%%:*}; dst=$${pair##*:}; \
+	  if [ ! -f "$$src" ]; then continue; fi; \
+	  if [ -f "$$dst" ]; then \
+	    echo "  $$dst already exists, skipping."; \
+	  else \
+	    cp "$$src" "$$dst"; \
+	    echo "  $$dst created from $$src"; \
+	  fi; \
+	done
+	@echo ""
+	@echo "Edit .env with your tokens, then run: make up"
 
 # --- Daily operations ---
 
@@ -48,6 +69,12 @@ cli:               ## Open interactive CLI
 
 onboard:           ## Run onboarding (for auth setup)
 	docker compose exec openclaw-gateway node dist/index.js onboard
+
+openai-codex:      ## Set up OpenAI Codex OAuth and make it the default model
+	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
+	docker compose exec openclaw-gateway node dist/index.js config set agents.defaults.model.primary openai-codex/gpt-5.4
+	docker compose exec openclaw-gateway node dist/index.js config set agents.defaults.model.fallbacks '["anthropic/claude-sonnet-4-6"]' --json
+	@echo "Default model set to openai-codex/gpt-5.4 (fallback: anthropic/claude-sonnet-4-6)"
 
 # --- Updates ---
 

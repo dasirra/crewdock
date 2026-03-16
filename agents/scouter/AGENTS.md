@@ -1,70 +1,108 @@
 # AGENTS.md - Scouter
 
-## Workflow
+## Two modes of operation
 
-### Cron cycle (heartbeat)
+### 1. Cron cycle (heartbeat)
 
-1. Read `SOUL.md` for identity and constraints.
-2. Check lock via `scouter-db.sh is-locked`. If locked, skip.
-3. Run `scouter-db.sh lock`.
-4. Read `config.json` for source list and schedules.
-5. For each source, check if due (compare schedule vs `scouter-db.sh last-scan`).
-6. For each due source: collect, deduplicate, filter, classify, draft, record.
-7. Post Discord report to The Watchtower (only if new content found).
-8. Run `scouter-db.sh set-last-scan` for each processed source.
-9. Run `scouter-db.sh cleanup` (once daily).
-10. Run `scouter-db.sh unlock`.
+On each heartbeat tick:
 
-### Interactive (messages)
+1. Run `scouter-db.sh is-locked`. If locked, skip this cycle.
+2. Run `scouter-db.sh lock`.
+3. Read `config.json`.
+4. For each source, check if due: compare `schedule` against `scouter-db.sh last-scan <source_name>`.
+5. For each due source, run the scan cycle (see below).
+6. If no sources are due, skip silently.
+7. Run `scouter-db.sh unlock`.
 
-Scouter responds to commands from the user:
-- `approve <id>` / `edit <id> [text]` / `discard <id>` — manage opportunities
-- `analyze [url]` — generate response draft for a specific post
-- `write about [topic]` — generate an original post
-- `daily summary` — consolidated briefing
-- `status` — config overview, last scan times, stats
-- `pending` — list pending opportunities
-- `add feed/keyword [value]` — add source to config
-- `remove feed/keyword [value]` — remove source from config
+### 2. Interactive (messages from the user)
 
-See SOUL.md for the full command reference.
+**Engagement:**
+- "approve `<id>`" — mark opportunity as approved. Reply with final draft text for copy-paste.
+- "edit `<id>` [new text]" — replace draft with user's text, mark as edited. Reply with final text.
+- "discard `<id>`" — mark as discarded.
 
-## Schedule
+**Content creation:**
+- "analyze [url or post text]" — analyze content and generate a response draft
+- "write about [topic]" — generate an original post
 
-Single cron heartbeat fires periodically. Per-source schedules in `config.json` control scan frequency.
+**Information:**
+- "daily summary" — consolidated briefing of everything scanned today
+- "status" — config overview, last scan times, pending count, approve/discard rates
+- "pending" — list all pending opportunities
 
-Schedule format:
+**Config management:**
+- "add feed [url]" — add an RSS source to config.json
+- "add keyword [term]" — add a Twitter keyword to config.json
+- "remove feed [name]" — remove an RSS source
+- "remove keyword [term]" — remove a Twitter keyword
+
+Changes take effect on the next heartbeat.
+
+## Schedule format
+
+Per-source schedules determine scan frequency:
+
 - `every-30m` — every 30 minutes
 - `every-4h` — every 4 hours
-- `twice-daily` — at 09:00 and 18:00
+- `twice-daily` — at 09:00 and 18:00 in configured timezone
 - `daily-at-10` — once at 10:00
-- `HH-HH` — hour range (e.g., `09-18`)
+- `HH-HH` — active during this hour range (e.g., `09-18`)
 
-## Process management
+To check if due: compare schedule against `scouter-db.sh last-scan <source_name>`. If enough time has elapsed (or no previous scan), the source is due. All times use `timezone` from config.json.
 
-- Single heartbeat, no parallel sessions (unlike Forge)
-- Concurrency via SQLite lock (`scouter-db.sh lock/unlock/is-locked`)
-- Stale locks auto-release after 30 minutes (prevents deadlock from crashed scans)
-- Content deduplication via SHA-256 hash in `scanned_items` table
+## Scan cycle
 
-## SQLite tracking database
+For each due source:
 
-Location: `$HOME/.openclaw/workspace/agents/scouter/scouter.db`
-Helper: `$HOME/.openclaw/workspace/agents/scouter/scouter-db.sh`
+1. **Collect** content:
+   - **Twitter** (`twitter`): use xurl CLI.
+     - Lists: `xurl api get /2/lists/:id/tweets` for each list ID
+     - Keywords: `xurl api get /2/tweets/search/recent?query=<keyword>`
+     - Mentions: `xurl api get /2/users/:id/mentions` if `mentions: true`
+     - On rate limit error, skip Twitter for this cycle and note in report.
+   - **RSS** (`rss`): fetch feed URL via HTTP. Parse XML for `<item>` or `<entry>` elements.
+   - **Web** (`web`): use browser tool to load page and extract relevant items.
 
-Tables:
-- `meta` — key-value store for lock state and last scan timestamps
-- `scanned_items` — processed content (source, hash, url, title, timestamp)
-- `opportunities` — engagement opportunities (original post, draft, status, timestamps)
+2. **Deduplicate**: compute SHA-256 hash of each URL. Run `scouter-db.sh is-scanned <hash>`. Skip already-processed items. For new items: `scouter-db.sh scan <source> <source_name> <hash> <url> <title>`.
 
-The database prevents:
-- Duplicate processing of the same content (hash-based dedup)
-- Concurrent scan cycles (lock mechanism)
-- Loss of state across restarts
+3. **Filter**: discard off-topic content, spam, memes, promotional content, retweets with no commentary, low-substance posts (one-word, emoji-only).
 
-## Config
+4. **Classify** each surviving item:
+   - **Briefing**: relevant and informative, but not a natural engagement opportunity
+   - **Opportunity**: a post where the user could add value by replying or quote-tweeting
 
-`config.json`:
+5. **Draft**: for each opportunity:
+   - Read `USER.md` for voice profile, tone, and guidelines
+   - Generate a response that sounds like the user
+   - Twitter/X replies: under 280 characters
+   - Follow Do/Don't rules from USER.md strictly
+   - Record via `scouter-db.sh opportunity <scanned_item_id> <original_post> <draft>`
+
+6. **Report**: post a structured summary to the Discord channel:
+
+```
+Scan 14:30
+
+-- BRIEFING --
+- Anthropic launches Claude 4.5 Opus with... [link]
+- New repo: agent-toolkit by LangChain... [link]
+
+-- OPPORTUNITIES --
+#42. @karpathy posted: "Still surprised nobody has..."
+   > Draft: "Actually, we've been building exactly this..."
+   approve 42 | edit 42 | discard 42
+```
+
+   - Only post if there is new content. No empty reports.
+   - Briefing: max 10 items, add "and N more items" if truncated.
+   - Opportunities: never truncated. IDs are globally unique SQLite IDs.
+
+7. **Housekeeping**:
+   - `scouter-db.sh set-last-scan <source_name>` for each source processed.
+   - `scouter-db.sh cleanup` once daily (skip if already run today).
+
+## Config reference
+
 ```json
 {
   "timezone": "Europe/Madrid",
@@ -85,7 +123,8 @@ The database prevents:
 }
 ```
 
-**Twitter source** (single object, scanned as one unit due to per-app rate limits):
+**Twitter** (single object, scanned as one unit due to rate limits):
+
 | Field | Required | Description |
 |---|---|---|
 | `schedule` | Yes | How often to scan |
@@ -93,30 +132,27 @@ The database prevents:
 | `keywords` | No | Search terms |
 | `mentions` | No | Monitor mentions (default: `false`) |
 
-**RSS/Web sources** (array of objects, each with own schedule):
+**RSS/Web** (array of objects, each with own schedule):
+
 | Field | Required | Description |
 |---|---|---|
 | `name` | Yes | Display name for reports |
 | `url` | Yes | Feed URL or page URL |
 | `schedule` | Yes | How often to scan |
 
-## Scan template
+## SQLite tracking
 
-`scan-template.md` defines the step-by-step instructions for each scan cycle:
-- Collect from due sources (xurl for Twitter, HTTP for RSS, browser for web)
-- Deduplicate via content hash
-- Filter and classify (LLM evaluation)
-- Draft responses for opportunities (following USER.md voice profile)
-- Post structured report to Discord
+Helper: `scouter-db.sh` (in workspace).
 
-## Reporting
+Tables:
+- `meta` — key-value store for lock state and last scan timestamps
+- `scanned_items` — processed content (source, hash, url, title, timestamp)
+- `opportunities` — engagement drafts (original post, draft, status, timestamps)
 
-Reports posted to Discord only when new content is found.
-- Briefing: max 10 items, "N more" note if truncated
-- Opportunities: never truncated, shown with globally unique SQLite IDs
-- Format: see SOUL.md for exact template
+Concurrency: single heartbeat, no parallel sessions. Lock via `scouter-db.sh lock/unlock/is-locked`. Stale locks auto-release after 30 minutes.
 
 ## Safety
+
 - Scouter modifies `config.json` only when the user explicitly asks.
 - Scouter never publishes to Twitter/X or any platform. Drafts are for manual copy-paste.
 - If config.json is missing or empty, exit silently on cron.

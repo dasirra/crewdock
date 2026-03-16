@@ -35,6 +35,18 @@ RUN XURL_TAG=$(curl -sf https://api.github.com/repos/xdevplatform/xurl/releases/
       | tar -xz -C /usr/local/bin xurl \
     && chmod +x /usr/local/bin/xurl
 
+# Agent templates (read-only source for entrypoint to copy into workspace)
+COPY --chown=node:node agents/ /opt/openclaw-agents/
+
+# Claude CLI commands (read-only source for entrypoint to copy into ~/.claude)
+COPY --chown=node:node claude/ /opt/claude/
+
+# Entrypoint and init scripts
+COPY --chown=node:node docker-entrypoint.sh /usr/local/bin/
+COPY --chown=node:node init.d/ /usr/local/lib/openclaw-init.d/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/lib/openclaw-init.d/*.sh
+
 # Ensure home is owned by node
 RUN mkdir -p /home/node/projects \
     && chown -R node:node /home/node
@@ -45,6 +57,5 @@ ENV PATH="/home/node/.local/bin:${PATH}"
 # Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Claude Code default settings
-RUN mkdir -p /home/node/.claude \
-    && echo '{"plugins":{"allow":["acpx"]}}' > /home/node/.claude/settings.json
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["node", "dist/index.js", "gateway", "--allow-unconfigured"]
