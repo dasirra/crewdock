@@ -5,19 +5,6 @@
 AGENT_TEMPLATES="/opt/openclaw-agents"
 WORKSPACE="$HOME/.openclaw/workspace"
 
-# is_protected <filename> <protected_file>
-# Returns 0 if filename matches any pattern in the .protected file.
-is_protected() {
-    local filename="$1" protected_file="$2"
-    [ -f "$protected_file" ] || return 1
-    while IFS= read -r pattern || [ -n "$pattern" ]; do
-        [[ "$pattern" =~ ^[[:space:]]*$ || "$pattern" =~ ^# ]] && continue
-        # shellcheck disable=SC2254
-        [[ "$filename" == $pattern ]] && return 0
-    done < "$protected_file"
-    return 1
-}
-
 for agent_dir in "$AGENT_TEMPLATES"/*/; do
     [ -d "$agent_dir" ] || continue
     agent_name=$(basename "$agent_dir")
@@ -68,14 +55,26 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
     else
         # --- Existing agent: sync definition files ---
         log "Syncing agent '$agent_name'..."
-        protected_file="$agent_dir/.protected"
+
+        # Cache protected patterns (read .protected file once, not per-file)
+        protected_patterns=()
+        if [ -f "$agent_dir/.protected" ]; then
+            while IFS= read -r pattern || [ -n "$pattern" ]; do
+                [[ "$pattern" =~ ^[[:space:]]*$ || "$pattern" =~ ^# ]] && continue
+                protected_patterns+=("$pattern")
+            done < "$agent_dir/.protected"
+        fi
 
         for src_file in "$agent_dir"*; do
             [ -e "$src_file" ] || continue
             filename=$(basename "$src_file")
-            [ "$filename" = ".protected" ] && continue
 
-            if is_protected "$filename" "$protected_file"; then
+            skip=false
+            for pattern in "${protected_patterns[@]}"; do
+                # shellcheck disable=SC2254
+                [[ "$filename" == $pattern ]] && skip=true && break
+            done
+            if [ "$skip" = true ]; then
                 log "  Protected: $filename"
                 continue
             fi
