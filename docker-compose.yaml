@@ -30,11 +30,15 @@ services:
       - DISCORD_FORGE_CHANNEL=${DISCORD_FORGE_CHANNEL:-}
       - DISCORD_SCOUTER_TOKEN=${DISCORD_SCOUTER_TOKEN:-}
       - DISCORD_SCOUTER_CHANNEL=${DISCORD_SCOUTER_CHANNEL:-}
+      - DISCORD_ALFRED_TOKEN=${DISCORD_ALFRED_TOKEN:-}
+      - DISCORD_ALFRED_CHANNEL=${DISCORD_ALFRED_CHANNEL:-}
       - DISCORD_GUILD=${DISCORD_GUILD:-}
+      - GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE=/home/node/.config/gws/credentials.json
     volumes:
       - ./config/openclaw:/home/node/.openclaw
       - ./workspace:/home/node/.openclaw/workspace
       - ./projects:/home/node/projects
       - ./config/claude:/home/node/.claude
       - ./config/gh:/home/node/.config/gh
+      - ./config/gws:/home/node/.config/gws
     command: ["node", "dist/index.js", "gateway", "--allow-unconfigured"]

@@ -5,6 +5,7 @@ USER root
 
 # Core tools
 RUN apt-get update && apt-get install -y \
+    cron \
     jq \
     procps \
     curl \
@@ -35,6 +36,9 @@ RUN XURL_TAG=$(curl -sf https://api.github.com/repos/xdevplatform/xurl/releases/
       | tar -xz -C /usr/local/bin xurl \
     && chmod +x /usr/local/bin/xurl
 
+# Google Workspace CLI (gws) + agent skills
+RUN npm install -g @googleworkspace/cli
+
 # Agent templates (read-only source for entrypoint to copy into workspace)
 COPY --chown=node:node agents/ /opt/openclaw-agents/
 
@@ -56,6 +60,9 @@ ENV PATH="/home/node/.local/bin:${PATH}"
 
 # Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash
+
+# Google Workspace agent skills
+RUN npx -y skills add https://github.com/googleworkspace/cli -y
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "dist/index.js", "gateway", "--allow-unconfigured"]
