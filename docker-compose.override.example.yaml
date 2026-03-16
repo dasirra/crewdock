@@ -9,10 +9,6 @@ services:
   # openclaw-gateway:
   #   build:
   #     dockerfile: Dockerfile.local
-  #   environment:
-  #     - GOOGLE_WORKSPACE_CLI_CONFIG_DIR=/home/node/.config/gws
-  #   volumes:
-  #     - ./config/gws:/home/node/.config/gws
 
   # Example: Syncthing for Obsidian sync
   # syncthing:

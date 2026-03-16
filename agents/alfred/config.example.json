@@ -1,8 +1,8 @@
 {
   "timezone": "Europe/Madrid",
   "briefing": {
-    "enabled": true,
-    "cron": "0 6 * * *",
+    "enabled": false,
+    "cron": "",
     "sections": ["calendar", "email", "tasks", "reminders"]
   },
   "confirmation": {
