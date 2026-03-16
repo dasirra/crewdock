@@ -1,68 +1,133 @@
-.PHONY: up down restart update rebuild logs status version shell cli onboard clean
+.PHONY: setup up down restart restart-gateway logs logs-all status version shell cli onboard openai-codex update clean help
+
+OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
+export OPENCLAW_VERSION
+
+# --- Setup ---
+
+setup:             ## First-time setup: check Docker, create dirs, copy example files, build and start
+	@command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is not installed."; exit 1; }
+	@docker info >/dev/null 2>&1 || { echo "ERROR: Docker daemon is not running."; exit 1; }
+	@docker compose version >/dev/null 2>&1 || { echo "ERROR: docker compose is not available."; exit 1; }
+	@echo "Docker OK."
+	@mkdir -p config/openclaw config/claude config/gh config/gws workspace projects
+	@echo "Runtime directories created."
+	@# Copy example files (skip if target already exists)
+	@for pair in \
+	  ".env.example:.env" \
+	  "docker-compose.override.example.yaml:docker-compose.override.yaml" \
+	  "Dockerfile.local.example:Dockerfile.local"; do \
+	  src=$${pair%%:*}; dst=$${pair##*:}; \
+	  if [ ! -f "$$src" ]; then continue; fi; \
+	  if [ -f "$$dst" ]; then \
+	    echo "  $$dst already exists, skipping."; \
+	  else \
+	    cp "$$src" "$$dst"; \
+	    echo "  $$dst created from $$src"; \
+	  fi; \
+	done
+	@echo ""
+	@echo "Edit .env with your tokens, then run: make up"
 
 # --- Daily operations ---
 
-up:                ## Start all services
-	sudo docker compose up -d
+up:                ## Build and start all services
+	docker compose up -d
 
 down:              ## Stop all services
-	sudo docker compose down
+	docker compose down
 
 restart:           ## Restart all services
-	sudo docker compose restart
+	docker compose restart
 
 restart-gateway:   ## Restart only the gateway
-	sudo docker compose restart openclaw-gateway
+	docker compose restart openclaw-gateway
 
 logs:              ## Tail gateway logs
-	sudo docker compose logs -f --tail 50 openclaw-gateway
+	docker compose logs -f --tail 50 openclaw-gateway
 
 logs-all:          ## Tail all service logs
-	sudo docker compose logs -f --tail 50
+	docker compose logs -f --tail 50
 
-status:            ## Show running containers and versions
-	sudo docker compose ps
-	@echo ""
-	@sudo docker compose exec openclaw-gateway node dist/index.js --version 2>/dev/null || echo "Gateway not running"
+status:            ## Show running containers
+	docker compose ps
 
-version:           ## Show running, image, and latest available versions
-	@echo "Running:   $$(sudo docker compose exec openclaw-gateway node dist/index.js --version 2>/dev/null || echo 'not running')"
-	@echo "Image:     $$(sudo docker run --rm alpine/openclaw:latest node dist/index.js --version 2>/dev/null || echo 'not pulled')"
-
-# --- Updates ---
-
-update:            ## Pull latest image, rebuild, and restart everything
-	sudo docker compose down
-	sudo docker rmi alpine/openclaw:latest 2>/dev/null || true
-	sudo docker pull alpine/openclaw:latest
-	sudo DOCKER_BUILDKIT=0 docker compose build --no-cache --pull
-	sudo docker compose up -d
-	@echo ""
-	@echo "Waiting for gateway to start..."
-	@sleep 5
-	@sudo docker compose logs --tail 5 openclaw-gateway
+version:           ## Show pinned, running, and latest versions
+	@echo "Pinned:    $(OPENCLAW_VERSION)"
+	@echo "Running:   $$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo 'not running')"
+	@LATEST=$$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
+	  | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))] | first' 2>/dev/null || echo 'unknown'); \
+	echo "Latest:    $$LATEST"
 
 # --- CLI tools ---
 
 shell:             ## Open bash shell in the gateway container
-	sudo docker compose exec openclaw-gateway bash
+	docker compose exec openclaw-gateway bash
 
 cli:               ## Open interactive CLI
-	sudo docker compose run --rm openclaw-cli
+	docker compose exec openclaw-gateway node dist/index.js
 
 onboard:           ## Run onboarding (for auth setup)
-	sudo docker compose run --rm openclaw-cli onboard
+	docker compose exec openclaw-gateway node dist/index.js onboard
 
-auth-codex:        ## Authenticate with OpenAI Codex
-	sudo docker compose run --rm openclaw-cli onboard --auth-choice openai-codex
+openai-codex:      ## Set up OpenAI Codex OAuth and make it the default model
+	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
+	docker compose exec openclaw-gateway node dist/index.js config set agents.defaults.model.primary openai-codex/gpt-5.4
+	docker compose exec openclaw-gateway node dist/index.js config set agents.defaults.model.fallbacks '["anthropic/claude-sonnet-4-6"]' --json
+	@echo "Default model set to openai-codex/gpt-5.4 (fallback: anthropic/claude-sonnet-4-6)"
 
-auth-anthropic:    ## Authenticate with Anthropic
-	sudo docker compose run --rm openclaw-cli models auth login --provider anthropic
+# --- Updates ---
+
+update:            ## Check for new OpenClaw version, update and rebuild if newer
+	@LATEST=$$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
+	  | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))] | first'); \
+	if [ -z "$$LATEST" ]; then \
+	  echo "ERROR: Could not fetch latest version from Docker Hub"; exit 1; \
+	fi; \
+	RUNNING=$$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo ""); \
+	PINNED=$$(cat .openclaw-version 2>/dev/null || echo "none"); \
+	if [ -n "$$RUNNING" ]; then \
+	  echo "Running: $$RUNNING"; \
+	  echo "Pinned:  $$PINNED"; \
+	  echo "Latest:  $$LATEST"; \
+	  RUN_NUM=$$(echo "$$RUNNING" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
+	  LAT_NUM=$$(echo "$$LATEST" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
+	  if [ "$$LAT_NUM" -le "$$RUN_NUM" ]; then \
+	    echo "Already up to date."; exit 0; \
+	  fi; \
+	else \
+	  echo "Gateway not running — cannot verify current version."; \
+	  echo "Pinned:  $$PINNED"; \
+	  echo "Latest:  $$LATEST"; \
+	  echo "Forcing rebuild..."; \
+	fi; \
+	echo "Updating to $$LATEST..."; \
+	echo "$$LATEST" > .openclaw-version; \
+	export OPENCLAW_VERSION=$$LATEST; \
+	docker compose down && \
+	echo "Pulling alpine/openclaw:$$LATEST..." && \
+	docker pull alpine/openclaw:$$LATEST && \
+	echo "Building base image..." && \
+	docker build --no-cache --build-arg OPENCLAW_VERSION=$$LATEST -t openclaw-openclaw-gateway:latest -f Dockerfile . && \
+	echo "Building final image..." && \
+	docker compose build --no-cache && \
+	docker compose up -d --force-recreate; \
+	echo ""; \
+	echo "Updated to $$LATEST. Waiting for gateway to start..."; \
+	sleep 10; \
+	echo "Verifying..."; \
+	VERIFY=$$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "could not verify"); \
+	echo "Running: $$VERIFY"; \
+	if [ "$$VERIFY" = "$$LATEST" ]; then \
+	  echo "Update successful!"; \
+	else \
+	  echo "WARNING: Expected $$LATEST but got $$VERIFY"; \
+	fi
 
 # --- Maintenance ---
 
 clean:             ## Remove old/dangling Docker images
-	sudo docker image prune -f
+	docker image prune -f
 	@echo "Cleaned up unused images"
 
 help:              ## Show this help

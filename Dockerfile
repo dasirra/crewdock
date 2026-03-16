@@ -1,12 +1,13 @@
-FROM alpine/openclaw:latest
+ARG OPENCLAW_VERSION=latest
+FROM alpine/openclaw:${OPENCLAW_VERSION}
 
 USER root
 
-# Install dev tools, Flutter deps + Tailscale CLI
+# Core tools
 RUN apt-get update && apt-get install -y \
+    cron \
     jq \
     procps \
-    file \
     curl \
     gnupg \
     git \
@@ -17,26 +18,8 @@ RUN apt-get update && apt-get install -y \
     xz-utils \
     zip \
     libglu1-mesa \
-    && mkdir -p /usr/share/keyrings \
-    && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null \
-    && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list \
-    && apt-get update \
-    && apt-get install -y tailscale \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
-
-# Install obsidian-cli
-RUN curl -L https://github.com/Yakitrak/obsidian-cli/releases/download/v0.2.3/obsidian-cli_0.2.3_linux_amd64.tar.gz -o obsidian-cli.tar.gz \
-    && tar -xzf obsidian-cli.tar.gz obsidian-cli \
-    && mv obsidian-cli /usr/local/bin/obsidian-cli \
-    && chmod +x /usr/local/bin/obsidian-cli \
-    && rm obsidian-cli.tar.gz
-
-# Install gog (Google Workspace CLI: Gmail, Calendar, Drive, Tasks, etc.)
-RUN curl -L https://github.com/steipete/gogcli/releases/download/v0.11.0/gogcli_0.11.0_linux_amd64.tar.gz -o gog.tar.gz \
-    && tar -xzf gog.tar.gz gog \
-    && mv gog /usr/local/bin/gog \
-    && chmod +x /usr/local/bin/gog \
-    && rm gog.tar.gz
 
 # GitHub CLI
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
@@ -46,24 +29,40 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get update && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
 
-# Flutter SDK
-RUN git clone --branch stable https://github.com/flutter/flutter.git /opt/flutter \
-    && chown -R node:node /opt/flutter
-ENV PATH="/opt/flutter/bin:${PATH}"
+# xurl CLI (X/Twitter API v2)
+RUN XURL_TAG=$(curl -sf https://api.github.com/repos/xdevplatform/xurl/releases/latest | jq -r '.tag_name') \
+    && [ "$XURL_TAG" != "null" ] && [ -n "$XURL_TAG" ] \
+    && curl -fsSL "https://github.com/xdevplatform/xurl/releases/download/${XURL_TAG}/xurl_Linux_x86_64.tar.gz" \
+      | tar -xz -C /usr/local/bin xurl \
+    && chmod +x /usr/local/bin/xurl
 
-# Create dev workspace & ensure home is owned by node
+# Google Workspace CLI (gws) + agent skills
+RUN npm install -g @googleworkspace/cli
+
+# Agent templates (read-only source for entrypoint to copy into workspace)
+COPY --chown=node:node agents/ /opt/openclaw-agents/
+
+# Claude CLI commands (read-only source for entrypoint to copy into ~/.claude)
+COPY --chown=node:node claude/ /opt/claude/
+
+# Entrypoint and init scripts
+COPY --chown=node:node docker-entrypoint.sh /usr/local/bin/
+COPY --chown=node:node init.d/ /usr/local/lib/openclaw-init.d/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/lib/openclaw-init.d/*.sh
+
+# Ensure home is owned by node
 RUN mkdir -p /home/node/projects \
     && chown -R node:node /home/node
 
 USER node
 ENV PATH="/home/node/.local/bin:${PATH}"
 
-# Pre-cache Flutter artifacts
-RUN flutter precache
-
-# Claude Code CLI (installed as node user)
+# Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Claude Code default settings
-RUN mkdir -p /home/node/.claude \
-    && echo '{"plugins":{"allow":["acpx"]}}' > /home/node/.claude/settings.json
+# Google Workspace agent skills
+RUN npx -y skills add https://github.com/googleworkspace/cli -y
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["node", "dist/index.js", "gateway", "--allow-unconfigured"]

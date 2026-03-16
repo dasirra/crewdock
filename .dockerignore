@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!Dockerfile.local
+!agents/
+!claude/
+!docker-entrypoint.sh
+!init.d/
