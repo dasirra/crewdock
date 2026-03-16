@@ -5,7 +5,6 @@ set -euo pipefail
 # this shell's environment and should use `return` (not `exit`) to bail out.
 
 INIT_DIR="/usr/local/lib/openclaw-init.d"
-MARKER="$HOME/.openclaw/workspace/.initialized"
 
 # Shared helpers for init scripts (sourced into same shell)
 log() { echo "[init] $SCRIPT_NAME: $*"; }
@@ -13,10 +12,8 @@ log() { echo "[init] $SCRIPT_NAME: $*"; }
 # Agents with Discord integration (used by 03-channels.sh and 05-bindings.sh)
 DISCORD_AGENTS="forge scouter"
 
-if [ -f "$MARKER" ]; then
-    echo "[init] Already initialized. Starting gateway..."
-    exec "$@"
-fi
+# Clean up legacy first-boot marker (no longer used)
+rm -f "$HOME/.openclaw/workspace/.initialized"
 
 # Pre-seed minimal config so the gateway can start with non-loopback bind
 CONFIG_FILE="$HOME/.openclaw/openclaw.json"
@@ -30,8 +27,8 @@ if [ ! -f "$CONFIG_FILE" ] || ! jq -e '.gateway.controlUi.allowedOrigins' "$CONF
     echo "[init] Pre-seeded controlUi.allowedOrigins in config."
 fi
 
-# First boot: start gateway in background so CLI commands can talk to it
-echo "[init] First boot detected. Starting gateway for configuration..."
+# Start gateway in background so CLI commands can talk to it
+echo "[init] Starting gateway for configuration..."
 "$@" &
 GATEWAY_PID=$!
 
@@ -64,9 +61,7 @@ done
 # Apply any config migrations flagged by the CLI
 node dist/index.js doctor --fix 2>/dev/null || true
 
-mkdir -p "$(dirname "$MARKER")"
-touch "$MARKER"
-echo "[init] Setup complete. Gateway is running."
+echo "[init] Init complete. Gateway is running."
 
 # Keep container alive by waiting on the gateway process
 wait "$GATEWAY_PID"
