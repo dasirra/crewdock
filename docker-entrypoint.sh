@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# If running as root, fix volume permissions and re-exec as node
+if [ "$(id -u)" = "0" ]; then
+    chown -R node:node /home/node/.openclaw /home/node/projects /home/node/.config /home/node/.claude
+    exec gosu node "$0" "$@"
+fi
+
 # Init scripts are `source`d (not executed as subprocesses), so they share
 # this shell's environment and should use `return` (not `exit`) to bail out.
 
