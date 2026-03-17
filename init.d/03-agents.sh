@@ -19,7 +19,7 @@ if [ -d "$OVERLORD_TEMPLATE" ]; then
         # --- New install ---
         log "Installing Overlord as main agent..."
         mkdir -p "$MAIN_WORKSPACE"
-        cp -r "$OVERLORD_TEMPLATE/"* "$MAIN_WORKSPACE/"
+        cp -r "$OVERLORD_TEMPLATE"/* "$MAIN_WORKSPACE/"
 
         # Rename .example.* files to their real names
         for example in "$MAIN_WORKSPACE"/*.example.*; do
