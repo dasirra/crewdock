@@ -61,8 +61,8 @@ for script in "$INIT_DIR"/*.sh; do
     source "$script"
 done
 
-# Apply any config migrations flagged by the CLI
-node dist/index.js doctor --fix 2>/dev/null || true
+# Apply safe config migrations (headless)
+node dist/index.js doctor --fix --non-interactive --yes 2>/dev/null || true
 
 echo "[init] Init complete. Gateway is running."
 
