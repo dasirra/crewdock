@@ -33,5 +33,8 @@ for AGENT in $DISCORD_AGENTS; do
         fi
     fi
 
+    # Always disable config writes from Discord (security hardening)
+    node dist/index.js config set "channels.discord.accounts.$AGENT.configWrites" false --json
+
     log "OK"
 done
