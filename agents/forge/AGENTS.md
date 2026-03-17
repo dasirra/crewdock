@@ -2,6 +2,26 @@
 
 ## Two modes of operation
 
+### Webhook flow (real-time)
+
+When GitHub webhooks are configured, Forge is triggered immediately on `issues.opened`:
+
+```
+GitHub (issues.opened event)
+  → POST https://<tailscale-hostname>/hooks/github       (Tailscale Funnel, /hooks/ only)
+    → HMAC proxy (validates X-Hub-Signature-256, adds Bearer token, port 18791)
+      → OpenClaw gateway :18789/hooks/github
+        → messageTemplate: "run <owner/repo> #<number>"
+          → Forge applies selection filters → spawns ACP session if eligible
+```
+
+The HMAC proxy (`scripts/gh-webhook-proxy.py`) runs as a systemd service on the host. See `docs/webhooks-setup.md` for setup.
+
+The 2h heartbeat remains active as a fallback for:
+- Issues created while the NAS was offline
+- GitHub webhook delivery failures
+- Issues that exceeded concurrency limits when first triggered
+
 ### 1. Cron cycle (heartbeat)
 
 On each heartbeat tick:
@@ -15,17 +35,18 @@ On each heartbeat tick:
 ### 2. Interactive (messages from the user)
 
 **Heartbeat control:**
-- "start" — set `agents.list[].heartbeat.every` to `"15m"` in `openclaw.json` via `config set`
+- "start" — set `agents.list[].heartbeat.every` to `"2h"` in `openclaw.json` via `config set` (2h is a safety-net fallback for missed webhooks; real-time triggering comes from GitHub webhooks)
+- "start fast" — set heartbeat to `"15m"` (use when webhooks are not configured)
 - "stop" — set `heartbeat.every` to `"0m"`
 
 **Triggering:**
 - "run `<repo>`" — run issue selection and spawn sessions immediately, regardless of schedule
-- "run `<repo>` #`<number>`" — spawn a session for that specific issue, skip selection
+- "run `<repo>` #`<number>`" — apply full selection filters (SQLite state, concurrency, labels) for that specific issue; spawn if eligible, skip if not
 - "run all" — trigger all enabled repos now
 
 **Managing repos:**
-- "add `<owner/repo>`" or "add `<owner/repo>` on `<branch>`" — add a project to config.json (inherits all defaults; branch defaults to `develop` if not specified)
-- "remove `<repo>`" — remove a project from config.json
+- "add `<owner/repo>`" or "add `<owner/repo>` on `<branch>`" — add a project to config.json (inherits all defaults; branch defaults to `develop` if not specified). If `WEBHOOK_URL` is set, also creates a GitHub webhook on the repo via `gh api repos/<owner>/<repo>/hooks` (requires admin permission — warn the user if missing, but still add to config).
+- "remove `<repo>`" — remove a project from config.json. If a GitHub webhook was previously created for this repo (detectable via `gh api repos/<owner>/<repo>/hooks`), delete it.
 - "pause `<repo>`" — set `enabled: false`
 - "resume `<repo>`" — set `enabled: true`
 
@@ -80,6 +101,7 @@ Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and sessi
      - `queued` or `failed` (retryable) — eligible
      - `new` (not in db) — run `forge-db.sh queue <repo> <number> "<title>"`, then eligible
    - **Exclude labels** — skip issues with labels in `excludeLabels`
+   - **Include labels** — if `includeLabels` is defined (project or defaults), skip issues that have *no* label matching any entry in the list. `excludeLabels` takes priority: an issue matching both lists is skipped.
    - **Open PRs** — skip issues that already have an open PR (check branch names via `gh pr list`)
    - **Active sessions** — skip issues with an active ACP session (match `autopilot-<repo>-<number>` labels via `sessions_list`)
 
@@ -118,6 +140,7 @@ Every setting resolves: project-level > `defaults` block > built-in fallback.
 | `thread` | `true` |
 | `maxConcurrentSessions` | `4` |
 | `maxAttempts` | `3` |
+| `includeLabels` | `[]` (all issues eligible) |
 | `enabled` | `true` |
 
 ## SQLite tracking
