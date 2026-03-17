@@ -26,6 +26,13 @@ setup:             ## First-time setup: check Docker, create dirs, copy example 
 	    echo "  $$dst created from $$src"; \
 	  fi; \
 	done
+	@# Install GWS credentials if provided
+	@if [ -f "credentials.json" ] && [ ! -f "config/gws/credentials.json" ]; then \
+		cp credentials.json config/gws/credentials.json; \
+		echo "  GWS credentials installed to config/gws/"; \
+	elif [ ! -f "config/gws/credentials.json" ]; then \
+		echo "  (optional) For Google Workspace: place credentials.json in project root and re-run make setup"; \
+	fi
 	@echo ""
 	@echo "Edit .env with your tokens, then run: make up"
 

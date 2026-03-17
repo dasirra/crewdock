@@ -1,5 +1,6 @@
 # Secrets
 .env
+credentials.json
 
 # Runtime data (created by setup.sh)
 config/
