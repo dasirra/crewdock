@@ -36,7 +36,7 @@ def verify_signature(body: bytes, signature_header: str, secret: bytes) -> bool:
     return hmac.compare_digest(expected, signature_header)
 
 
-def should_forward(event: str, action: str) -> bool:
+def is_issues_opened(event: str, action: str) -> bool:
     """Return True only for issues.opened events."""
     return event == "issues" and action == "opened"
 
@@ -51,10 +51,15 @@ OPENCLAW_HOOKS_URL: str = os.environ.get(
 PROXY_PORT: str = os.environ.get("PROXY_PORT", "18791")
 PROXY_HOST: str = os.environ.get("PROXY_HOST", "127.0.0.1")
 
+MAX_BODY_BYTES: int = 1_048_576  # 1 MB — GitHub payloads are well under this
+
 
 class WebhookHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802
         content_length = int(self.headers.get("Content-Length") or 0)
+        if content_length > MAX_BODY_BYTES:
+            self._respond(413, b"Payload too large")
+            return
         body = self.rfile.read(content_length)
 
         # Validate HMAC signature
@@ -73,7 +78,7 @@ class WebhookHandler(http.server.BaseHTTPRequestHandler):
         # Filter: only issues.opened
         event = self.headers.get("X-GitHub-Event", "")
         action = payload.get("action", "")
-        if not should_forward(event, action):
+        if not is_issues_opened(event, action):
             self._respond(200, b"Ignored")
             return
 
@@ -97,6 +102,7 @@ class WebhookHandler(http.server.BaseHTTPRequestHandler):
 
     def _respond(self, status: int, body: bytes) -> None:
         self.send_response(status)
+        self.send_header("Content-Type", "text/plain")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -119,7 +125,7 @@ def main() -> None:
         print(f"ERROR: PROXY_PORT must be an integer, got: {PROXY_PORT!r}", file=sys.stderr)
         sys.exit(1)
 
-    server = http.server.HTTPServer((PROXY_HOST, port), WebhookHandler)
+    server = http.server.ThreadingHTTPServer((PROXY_HOST, port), WebhookHandler)
     print(f"[proxy] Listening on {PROXY_HOST}:{port}")
     print(f"[proxy] Forwarding issues.opened to {OPENCLAW_HOOKS_URL}")
     try:

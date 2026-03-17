@@ -44,18 +44,18 @@ class TestVerifySignature(unittest.TestCase):
         self.assertFalse(proxy.verify_signature(body, sig, b"test-secret"))
 
 
-class TestShouldForward(unittest.TestCase):
+class TestIsIssuesOpened(unittest.TestCase):
     def test_issues_opened(self):
-        self.assertTrue(proxy.should_forward("issues", "opened"))
+        self.assertTrue(proxy.is_issues_opened("issues", "opened"))
 
     def test_issues_closed(self):
-        self.assertFalse(proxy.should_forward("issues", "closed"))
+        self.assertFalse(proxy.is_issues_opened("issues", "closed"))
 
     def test_pull_request(self):
-        self.assertFalse(proxy.should_forward("pull_request", "opened"))
+        self.assertFalse(proxy.is_issues_opened("pull_request", "opened"))
 
     def test_push(self):
-        self.assertFalse(proxy.should_forward("push", ""))
+        self.assertFalse(proxy.is_issues_opened("push", ""))
 
 
 if __name__ == "__main__":

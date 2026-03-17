@@ -7,9 +7,9 @@ if [ -z "${HOOKS_TOKEN:-}" ]; then
     return 0
 fi
 
-# Check if route already configured
+# Check if route already configured (jq parses JSON to avoid false matches on substrings)
 EXISTING=$(node dist/index.js config get "hooks.routes" 2>/dev/null || echo "")
-if echo "$EXISTING" | grep -q "/hooks/github"; then
+if echo "$EXISTING" | jq -e '.[] | select(.path == "/hooks/github")' >/dev/null 2>&1; then
     log "Hooks route /hooks/github already configured, skipping."
     return 0
 fi
