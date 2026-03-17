@@ -31,8 +31,8 @@ setup:             ## First-time setup: check Docker, create dirs, copy example 
 
 # --- Daily operations ---
 
-up:                ## Build and start all services
-	docker compose up -d
+up:                ## Build and start all services (rebuilds if pinned version changed)
+	docker compose up -d --build
 
 down:              ## Stop all services
 	docker compose down
