@@ -36,9 +36,11 @@ done
 TARGET_COUNT=$(echo "$PLAN" | jq '.targets | length')
 if [ "$TARGET_COUNT" -gt 0 ]; then
     echo "$PLAN" > /tmp/secrets-plan.json
+    trap 'rm -f /tmp/secrets-plan.json' EXIT
     log "Applying secrets plan ($TARGET_COUNT targets)..."
     node dist/index.js secrets apply --from /tmp/secrets-plan.json
     rm -f /tmp/secrets-plan.json
+    trap - EXIT
     log "OK"
 else
     log "No token env vars found, skipping secrets migration."
