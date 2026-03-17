@@ -10,8 +10,10 @@ else
     node dist/index.js plugins install acpx
     node dist/index.js config set plugins.entries.acpx.enabled true
     node dist/index.js config set plugins.entries.acpx.config.permissionMode approve-all
-    node dist/index.js config set plugins.allow '["acpx"]' --json
 fi
+
+# Always ensure acpx is in the allow list
+node dist/index.js config set plugins.allow '["acpx"]' --json
 
 # Enable ACP with acpx backend
 if node dist/index.js config get acp.enabled 2>/dev/null | grep -q "true"; then
