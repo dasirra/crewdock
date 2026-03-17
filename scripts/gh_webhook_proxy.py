@@ -48,13 +48,13 @@ HOOKS_TOKEN: str = os.environ.get("HOOKS_TOKEN", "")
 OPENCLAW_HOOKS_URL: str = os.environ.get(
     "OPENCLAW_HOOKS_URL", "http://127.0.0.1:18789/hooks/github"
 )
-PROXY_PORT: int = int(os.environ.get("PROXY_PORT", "18791"))
+PROXY_PORT: str = os.environ.get("PROXY_PORT", "18791")
 PROXY_HOST: str = os.environ.get("PROXY_HOST", "127.0.0.1")
 
 
 class WebhookHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802
-        content_length = int(self.headers.get("Content-Length", 0))
+        content_length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(content_length)
 
         # Validate HMAC signature
@@ -113,8 +113,14 @@ def main() -> None:
         print("ERROR: HOOKS_TOKEN is not set", file=sys.stderr)
         sys.exit(1)
 
-    server = http.server.HTTPServer((PROXY_HOST, PROXY_PORT), WebhookHandler)
-    print(f"[proxy] Listening on {PROXY_HOST}:{PROXY_PORT}")
+    try:
+        port = int(PROXY_PORT)
+    except ValueError:
+        print(f"ERROR: PROXY_PORT must be an integer, got: {PROXY_PORT!r}", file=sys.stderr)
+        sys.exit(1)
+
+    server = http.server.HTTPServer((PROXY_HOST, port), WebhookHandler)
+    print(f"[proxy] Listening on {PROXY_HOST}:{port}")
     print(f"[proxy] Forwarding issues.opened to {OPENCLAW_HOOKS_URL}")
     try:
         server.serve_forever()
