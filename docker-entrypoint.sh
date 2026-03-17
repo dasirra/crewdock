@@ -16,10 +16,12 @@ DISCORD_AGENTS="forge scouter alfred"
 CONFIG_FILE="$HOME/.openclaw/openclaw.json"
 if [ ! -f "$CONFIG_FILE" ] || ! jq -e '.gateway.controlUi.allowedOrigins' "$CONFIG_FILE" >/dev/null 2>&1; then
     mkdir -p "$(dirname "$CONFIG_FILE")"
+    ORIGINS="${OPENCLAW_ALLOWED_ORIGINS:-*}"
+    ORIGINS_JSON=$(echo "$ORIGINS" | jq -R 'split(",")')
     if [ -f "$CONFIG_FILE" ]; then
-        jq '.gateway.controlUi.allowedOrigins = ["*"]' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+        jq --argjson origins "$ORIGINS_JSON" '.gateway.controlUi.allowedOrigins = $origins' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
     else
-        echo '{"gateway":{"controlUi":{"allowedOrigins":["*"]}}}' > "$CONFIG_FILE"
+        echo "{\"gateway\":{\"controlUi\":{\"allowedOrigins\":$(echo "$ORIGINS_JSON")}}}" > "$CONFIG_FILE"
     fi
     echo "[init] Pre-seeded controlUi.allowedOrigins in config."
 fi

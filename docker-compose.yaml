@@ -33,6 +33,7 @@ services:
       - DISCORD_ALFRED_TOKEN=${DISCORD_ALFRED_TOKEN:-}
       - DISCORD_ALFRED_CHANNEL=${DISCORD_ALFRED_CHANNEL:-}
       - DISCORD_GUILD=${DISCORD_GUILD:-}
+      - OPENCLAW_ALLOWED_ORIGINS=${OPENCLAW_ALLOWED_ORIGINS:-}
       - GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE=/home/node/.config/gws/credentials.json
     volumes:
       - ./config/openclaw:/home/node/.openclaw
