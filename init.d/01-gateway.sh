@@ -8,6 +8,10 @@ node dist/index.js config set gateway.mode local
 # Disable memory search (no embedding provider configured)
 node dist/index.js config set agents.defaults.memorySearch.enabled false
 
+# Rate-limit auth attempts to prevent brute-force attacks
+node dist/index.js config set gateway.auth.rateLimit \
+  '{"maxAttempts":10,"windowMs":60000,"lockoutMs":300000,"exemptLoopback":true}' --json
+
 # Check if gateway token is already configured
 if node dist/index.js config get gateway.auth.token 2>/dev/null | grep -q .; then
     log "Gateway token already configured, skipping."
