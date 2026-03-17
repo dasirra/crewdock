@@ -1,4 +1,4 @@
-.PHONY: setup up down restart restart-gateway logs logs-all status version shell cli onboard openai-codex update clean help
+.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version shell cli onboard openai-codex update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -38,6 +38,14 @@ up:                ## Build and start all services (pulls base image if version 
 		docker pull ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION); \
 	fi
 	docker compose up -d --build
+
+up-debug:          ## Build and start in foreground (no daemon, for debugging)
+	@IMAGE_ID=$$(docker images -q ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION) 2>/dev/null); \
+	if [ -z "$$IMAGE_ID" ]; then \
+		echo "Pulling ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION)..."; \
+		docker pull ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION); \
+	fi
+	docker compose up --build
 
 down:              ## Stop all services
 	docker compose down
