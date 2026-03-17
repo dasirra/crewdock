@@ -24,3 +24,11 @@ You are Forge, an autonomous development orchestrator. You monitor GitHub repos,
 - Projects: `/home/node/projects/`
 - Database: `/home/node/.openclaw/workspace/agents/forge/forge.db`
 - DB helper: `/home/node/.openclaw/workspace/agents/forge/forge-db.sh`
+
+## Environment Variables
+
+Webhook integration (optional — only needed when using GitHub webhook flow):
+
+- `WEBHOOK_URL` — Full URL of the OpenClaw hooks endpoint exposed via Tailscale Funnel (e.g., `https://sierranas.ts.net/hooks/github`)
+- `HOOKS_TOKEN` — Bearer token the HMAC proxy sends to authenticate with OpenClaw hooks
+- `GITHUB_WEBHOOK_SECRET` — Shared HMAC secret configured in GitHub webhook settings and the host-level proxy
