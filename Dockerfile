@@ -52,9 +52,9 @@ COPY --chown=node:node init.d/ /usr/local/lib/openclaw-init.d/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && chmod +x /usr/local/lib/openclaw-init.d/*.sh
 
-# Ensure home is owned by node
-RUN mkdir -p /home/node/projects \
-    && chown -R node:node /home/node
+# Ensure home is owned by node + compile cache for low-power hosts
+RUN mkdir -p /home/node/projects /var/tmp/openclaw-compile-cache \
+    && chown -R node:node /home/node /var/tmp/openclaw-compile-cache
 
 USER node
 ENV PATH="/home/node/.local/bin:${PATH}"

@@ -2,6 +2,12 @@
 # 01-gateway.sh — Gateway token configuration
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 
+# Set gateway mode (required by doctor)
+node dist/index.js config set gateway.mode local
+
+# Disable memory search (no embedding provider configured)
+node dist/index.js config set agents.defaults.memorySearch.enabled false
+
 # Check if gateway token is already configured
 if node dist/index.js config get gateway.auth.token 2>/dev/null | grep -q .; then
     log "Gateway token already configured, skipping."
