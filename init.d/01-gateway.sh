@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # 01-gateway.sh — Gateway token configuration
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
+#
+# Structure: unconditional defaults run first on every boot, then token
+# initialisation (guarded — runs once). Add new always-enforce config above
+# the token guard; add one-time setup below it.
 
 # Set gateway mode (required by doctor)
 node dist/index.js config set gateway.mode local
