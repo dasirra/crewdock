@@ -35,6 +35,9 @@ services:
       - DISCORD_ALFRED_TOKEN=${DISCORD_ALFRED_TOKEN:-}
       - DISCORD_ALFRED_CHANNEL=${DISCORD_ALFRED_CHANNEL:-}
       - DISCORD_GUILD=${DISCORD_GUILD:-}
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - HOOKS_TOKEN=${HOOKS_TOKEN:-}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}
       - GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE=/home/node/.config/gws/credentials.json
     volumes:
       - ./config/openclaw:/home/node/.openclaw
