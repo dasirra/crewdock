@@ -19,6 +19,9 @@ for AGENT in $DISCORD_AGENTS; do
         node dist/index.js config set "channels.discord.accounts.$AGENT.token" "\"$TOKEN\"" --json
     fi
 
+    # Allow all guild members to interact
+    node dist/index.js config set "channels.discord.accounts.$AGENT.groupPolicy" '"open"' --json
+
     # Always ensure guild allowlist is configured (idempotent)
     CHANNEL_VAR="DISCORD_${UPPER}_CHANNEL"
     CHANNEL="${!CHANNEL_VAR:-}"
