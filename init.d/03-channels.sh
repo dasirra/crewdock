@@ -2,6 +2,9 @@
 # 03-channels.sh — Configure Discord accounts (one per bot token)
 # SCRIPT_NAME, log(), and DISCORD_AGENTS are provided by docker-entrypoint.sh
 
+# Allow all guild members to interact (top-level default)
+node dist/index.js config set channels.discord.groupPolicy '"open"' --json
+
 for AGENT in $DISCORD_AGENTS; do
     UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
     TOKEN_VAR="DISCORD_${UPPER}_TOKEN"
