@@ -61,9 +61,6 @@ for script in "$INIT_DIR"/*.sh; do
     source "$script"
 done
 
-# Apply safe config migrations (headless)
-node dist/index.js doctor --fix --non-interactive --yes 2>/dev/null || true
-
 echo "[init] Init complete. Gateway is running."
 
 # Keep container alive by waiting on the gateway process
