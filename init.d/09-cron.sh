@@ -10,8 +10,15 @@
 WORKSPACE="$HOME/.openclaw/workspace"
 PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
 
-# Read gateway auth token for RPC calls
-TOKEN=$(jq -r '.gateway.auth.token // empty' "$HOME/.openclaw/openclaw.json" 2>/dev/null)
+# Read gateway auth token for RPC calls.
+# Prefer env var: after secrets migration, the config value is a SecretRef object,
+# not a plaintext string. If OPENCLAW_GATEWAY_TOKEN is not set, the gateway token
+# was not migrated and the config still holds a plaintext string.
+if [ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]; then
+    TOKEN="$OPENCLAW_GATEWAY_TOKEN"
+else
+    TOKEN=$(jq -r '.gateway.auth.token // empty' "$HOME/.openclaw/openclaw.json" 2>/dev/null)
+fi
 if [ -z "$TOKEN" ]; then
     log "No gateway token found, skipping cron setup."
     return 0
