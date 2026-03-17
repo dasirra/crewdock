@@ -60,11 +60,11 @@ Forge is the autonomous development orchestrator. Understanding its flow is key 
 
 ## Version Pinning
 
-The OpenClaw base image version is pinned in `.openclaw-version` (CalVer `YYYY.M.D`). The Dockerfile receives it as a build arg `OPENCLAW_VERSION`. `make update` checks Docker Hub for newer versions and only rebuilds if one exists. `make version` shows pinned, running, and latest versions.
+The OpenClaw base image version is pinned in `.openclaw-version` (CalVer `YYYY.M.D-patch`). The Dockerfile receives it as a build arg `OPENCLAW_VERSION`. Base image is `ghcr.io/openclaw/openclaw`. `make up` pulls the base image if the pinned version isn't cached locally. `make update` checks GHCR for newer versions and only rebuilds if one exists. `make version` shows pinned, running, and latest versions.
 
 ## Docker Setup
 
-- Base image: `alpine/openclaw:<version>` (Debian-based despite the name, version from `.openclaw-version`)
+- Base image: `ghcr.io/openclaw/openclaw:<version>` (Debian-based, version from `.openclaw-version`)
 - `Dockerfile` adds: git, gh CLI, jq, sqlite3, python3, build-essential, Claude CLI
 - `Dockerfile.local` — personal tool additions (gitignored, built from `.example`)
 - `docker-compose.override.yaml` — personal service additions (gitignored, merges automatically)

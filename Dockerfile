@@ -1,5 +1,5 @@
 ARG OPENCLAW_VERSION=latest
-FROM alpine/openclaw:${OPENCLAW_VERSION}
+FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 
 USER root
 

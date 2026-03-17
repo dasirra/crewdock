@@ -31,7 +31,12 @@ setup:             ## First-time setup: check Docker, create dirs, copy example 
 
 # --- Daily operations ---
 
-up:                ## Build and start all services (rebuilds if pinned version changed)
+up:                ## Build and start all services (pulls base image if version changed)
+	@IMAGE_ID=$$(docker images -q ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION) 2>/dev/null); \
+	if [ -z "$$IMAGE_ID" ]; then \
+		echo "Pulling ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION)..."; \
+		docker pull ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION); \
+	fi
 	docker compose up -d --build
 
 down:              ## Stop all services
@@ -55,8 +60,8 @@ status:            ## Show running containers
 version:           ## Show pinned, running, and latest versions
 	@echo "Pinned:    $(OPENCLAW_VERSION)"
 	@echo "Running:   $$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo 'not running')"
-	@LATEST=$$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
-	  | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))] | first' 2>/dev/null || echo 'unknown'); \
+	@LATEST=$$(curl -sf "https://api.github.com/orgs/openclaw/packages/container/openclaw/versions?per_page=1" \
+	  | jq -r '.[0].metadata.container.tags[0]' 2>/dev/null || echo 'unknown'); \
 	echo "Latest:    $$LATEST"
 
 # --- CLI tools ---
@@ -79,10 +84,10 @@ openai-codex:      ## Set up OpenAI Codex OAuth and make it the default model
 # --- Updates ---
 
 update:            ## Check for new OpenClaw version, update and rebuild if newer
-	@LATEST=$$(curl -sf "https://hub.docker.com/v2/repositories/alpine/openclaw/tags/?page_size=50&ordering=last_updated" \
-	  | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))] | first'); \
-	if [ -z "$$LATEST" ]; then \
-	  echo "ERROR: Could not fetch latest version from Docker Hub"; exit 1; \
+	@LATEST=$$(curl -sf "https://api.github.com/orgs/openclaw/packages/container/openclaw/versions?per_page=1" \
+	  | jq -r '.[0].metadata.container.tags[0]'); \
+	if [ -z "$$LATEST" ] || [ "$$LATEST" = "null" ]; then \
+	  echo "ERROR: Could not fetch latest version from GHCR"; exit 1; \
 	fi; \
 	RUNNING=$$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo ""); \
 	PINNED=$$(cat .openclaw-version 2>/dev/null || echo "none"); \
@@ -105,8 +110,8 @@ update:            ## Check for new OpenClaw version, update and rebuild if newe
 	echo "$$LATEST" > .openclaw-version; \
 	export OPENCLAW_VERSION=$$LATEST; \
 	docker compose down && \
-	echo "Pulling alpine/openclaw:$$LATEST..." && \
-	docker pull alpine/openclaw:$$LATEST && \
+	echo "Pulling ghcr.io/openclaw/openclaw:$$LATEST..." && \
+	docker pull ghcr.io/openclaw/openclaw:$$LATEST && \
 	echo "Building base image..." && \
 	docker build --no-cache --build-arg OPENCLAW_VERSION=$$LATEST -t openclaw-openclaw-gateway:latest -f Dockerfile . && \
 	echo "Building final image..." && \
