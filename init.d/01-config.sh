@@ -8,7 +8,7 @@
 # Support standalone preview mode (used by 'make config-preview')
 if [ -z "${SCRIPT_NAME:-}" ]; then
     SCRIPT_NAME="01-config"
-    log() { echo "[preview] $*"; }
+    log() { echo "[preview] $*" >&2; }
     DISCORD_AGENTS="${DISCORD_AGENTS:-forge scouter alfred}"
 fi
 
@@ -23,7 +23,6 @@ fi
 # ---------- Step 1: Preserve heartbeat operational fields from existing config ----------
 
 SAVED_HEARTBEATS='{}'
-SAVED_GW_TOKEN=''
 
 if [ -f "$CONFIG_FILE" ]; then
     SAVED_HEARTBEATS=$(jq '
@@ -34,21 +33,24 @@ if [ -f "$CONFIG_FILE" ]; then
                 | select(length > 0))
         }] | from_entries // {}
     ' "$CONFIG_FILE")
-    SAVED_GW_TOKEN=$(jq -r '.gateway.auth.token // ""' "$CONFIG_FILE")
     log "Preserved heartbeat config from previous boot."
 fi
 
-# ---------- Step 2: Resolve gateway token ----------
+# ---------- Step 2: Resolve gateway token (persisted file + env export) ----------
 
 if [ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]; then
-    GW_TOKEN="$OPENCLAW_GATEWAY_TOKEN"
     log "Using gateway token from environment."
-elif [ -n "$SAVED_GW_TOKEN" ]; then
-    GW_TOKEN="$SAVED_GW_TOKEN"
-    log "Using gateway token from previous config."
 else
-    GW_TOKEN=$(openssl rand -hex 32)
-    log "Generated new gateway token."
+    TOKEN_FILE="$HOME/.openclaw/.gateway-token"
+    if [ -f "$TOKEN_FILE" ]; then
+        export OPENCLAW_GATEWAY_TOKEN=$(cat "$TOKEN_FILE")
+        log "Using gateway token from persisted file."
+    else
+        export OPENCLAW_GATEWAY_TOKEN=$(openssl rand -hex 32)
+        echo "$OPENCLAW_GATEWAY_TOKEN" > "$TOKEN_FILE"
+        chmod 600 "$TOKEN_FILE"
+        log "Generated and persisted new gateway token."
+    fi
 fi
 
 # ---------- Step 3: Build agents data from env vars ----------
@@ -65,9 +67,8 @@ for agent in $DISCORD_AGENTS; do
 
     AGENTS_DATA=$(echo "$AGENTS_DATA" | jq \
         --arg id "$agent" \
-        --arg token "$token" \
         --arg channel "$channel" \
-        '. + [{id: $id, token: $token, channel: $channel}]')
+        '. + [{id: $id, channel: $channel}]')
 done
 
 log "Discord agents: $(echo "$AGENTS_DATA" | jq -r '[.[].id] | join(", ")') ($(echo "$AGENTS_DATA" | jq length) configured)"
@@ -75,7 +76,6 @@ log "Discord agents: $(echo "$AGENTS_DATA" | jq -r '[.[].id] | join(", ")') ($(e
 # ---------- Step 4: Build core config with jq ----------
 
 CORE=$(jq -n \
-    --arg gw_token "$GW_TOKEN" \
     --arg guild "${DISCORD_GUILD:-}" \
     --arg workspace "$WORKSPACE" \
     --argjson agents "$AGENTS_DATA" \
@@ -83,7 +83,7 @@ CORE=$(jq -n \
     {
         gateway: {
             mode: "local",
-            auth: { token: $gw_token },
+            auth: { token: { source: "env", provider: "default", id: "OPENCLAW_GATEWAY_TOKEN" } },
             controlUi: { allowedOrigins: ["*"] }
         },
 
@@ -116,7 +116,7 @@ CORE=$(jq -n \
                     $agents | map({
                         key: .id,
                         value: (
-                            { token: .token, groupPolicy: "open" }
+                            { token: { source: "env", provider: "default", id: ("DISCORD_" + (.id | ascii_upcase) + "_TOKEN") }, groupPolicy: "open" }
                             + (if $guild != "" then {
                                 guilds: {
                                     ($guild): (if .channel != "" then {
