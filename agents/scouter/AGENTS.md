@@ -1,5 +1,7 @@
 # AGENTS.md - Scouter
 
+**References:** See `post-templates/` for draft structure definitions and template selection logic.
+
 ## Two modes of operation
 
 ### 1. Cron cycle (heartbeat)
@@ -20,10 +22,13 @@ On each heartbeat tick:
 - "approve `<id>`" — mark opportunity as approved. Reply with final draft text for copy-paste.
 - "edit `<id>` [new text]" — replace draft with user's text, mark as edited. Reply with final text.
 - "discard `<id>`" — mark as discarded.
+- "retype `<id>` `<type>`" — change the post template for a pending opportunity. Regenerate the draft using the new template structure. Valid types: library-review, reply, quote-tweet, original-take, thread, news-commentary, resource-share, build-log.
 
 **Content creation:**
-- "analyze [url or post text]" — analyze content and generate a response draft
-- "write about [topic]" — generate an original post
+- "analyze [url or post text]" — analyze content, detect the appropriate template type (library-review for GitHub repos, news-commentary for articles, reply for tweets), visit the URL if link-first type, and generate a structured draft
+- "analyze [url] as `<type>`" — analyze content using a specific template type instead of auto-detecting
+- "write about [topic]" — generate an original post (original-take by default, thread if complex)
+- "write `<type>` about [topic]" — generate a post using a specific template type
 
 **Information:**
 - "daily summary" — consolidated briefing of everything scanned today
@@ -69,14 +74,20 @@ For each due source:
 
 4. **Classify** each surviving item:
    - **Briefing**: relevant and informative, but not a natural engagement opportunity
-   - **Opportunity**: a post where the user could add value by replying or quote-tweeting
+   - **Opportunity**: a post where the user could add value. Assign a template type from `post-templates/`:
+     - Tweet from someone -> `reply` or `quote-tweet`
+     - Link to a GitHub repo -> `library-review`
+     - Link to an article/announcement -> `news-commentary` or `resource-share`
+     - Recurring topic trend -> `original-take` or `thread`
 
 5. **Draft**: for each opportunity:
+   - Read the assigned template file from `post-templates/` for the draft structure
+   - If the template is **link-first** (library-review, news-commentary, resource-share): visit the URL, read and understand the content before drafting
    - Read `USER.md` for voice profile, tone, and guidelines
-   - Generate a response that sounds like the user
+   - Generate a draft that follows the template structure and sounds like the user
    - Twitter/X replies: under 280 characters
    - Follow Do/Don't rules from USER.md strictly
-   - Record via `scouter-db.sh opportunity <scanned_item_id> <original_post> <draft>`
+   - Record via `scouter-db.sh opportunity <scanned_item_id> <original_post> <draft> <template>`
 
 6. **Report**: post a structured summary to the Discord channel:
 
@@ -88,14 +99,28 @@ Scan 14:30
 - New repo: agent-toolkit by LangChain... [link]
 
 -- OPPORTUNITIES --
-#42. @karpathy posted: "Still surprised nobody has..."
-   > Draft: "Actually, we've been building exactly this..."
-   approve 42 | edit 42 | discard 42
+#42 reply
+@karpathy: "Still surprised nobody has..."
+---
+The missing piece isn't the memory — it's deciding what's worth remembering.
+---
+approve 42 | edit 42 | discard 42 | retype 42 [type]
+
+#43 library-review
+Source: GitHub Trending
+---
+Pydantic AI — Agent framework with type-safe structured outputs
+
+https://github.com/pydantic/pydantic-ai
+
+First framework to treat agent outputs as validated data structures, not raw strings.
+---
+approve 43 | edit 43 | discard 43 | retype 43 [type]
 ```
 
    - Only post if there is new content. No empty reports.
    - Briefing: max 10 items, add "and N more items" if truncated.
-   - Opportunities: never truncated. IDs are globally unique SQLite IDs.
+   - Opportunities: never truncated. IDs are globally unique SQLite IDs. Each shows its template type after the ID.
 
 7. **Housekeeping**:
    - `scouter-db.sh set-last-scan <source_name>` for each source processed.
