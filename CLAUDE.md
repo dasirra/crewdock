@@ -83,6 +83,16 @@ Volume mounts map local dirs into the container:
 - Never push to main directly — always feature branches + PRs
 - Forge creates worktree-based feature branches per issue
 
+## Config Hot-Reload
+
+OpenClaw watches `openclaw.json` and hot-applies most changes without restart (default mode: `hybrid`). Agents can use `config set` or `config.patch` to modify settings at runtime.
+
+**Hot-applies instantly (no restart):** channels, agent routing, models, heartbeat, cron, automation, sessions, tools, logging.
+
+**Requires gateway restart:** gateway server settings (port, auth, TLS), plugins, discovery, canvasHost.
+
+For partial config updates from agent code, use `config.patch` RPC (requires `baseHash` from `config.get`). For single keys, use `openclaw config set`. Both trigger hot-reload automatically.
+
 ## Key Patterns
 
 - **Agent installation:** Agent templates are baked into the Docker image at `/opt/openclaw-agents/` and copied to the workspace volume on first boot by `init.d/04-agents.sh`. Edit templates in `agents/forge/`, rebuild the image with `make up` to pick up changes. The init script skips agents whose sentinel file (`SOUL.md`) already exists.

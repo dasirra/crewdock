@@ -46,6 +46,7 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
                 node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.every" '"0m"' --json
                 node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.target" '"discord"' --json
                 node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.to" "\"channel:$CHANNEL\"" --json
+                node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.accountId" "\"$agent_name\"" --json
                 node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.directPolicy" '"block"' --json
             else
                 log "WARNING: could not find agent index for $agent_name, skipping heartbeat config"
