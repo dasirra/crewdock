@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 10-gws.sh — Google Workspace CLI credentials check
+# 06-gws.sh -- Google Workspace CLI credentials check
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 
 GWS_CREDS="${GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE:-$HOME/.config/gws/credentials.json}"

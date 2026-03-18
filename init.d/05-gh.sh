@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 08-gh.sh — Persist GitHub CLI auth (so ACP sessions can use gh)
+# 05-gh.sh -- Persist GitHub CLI auth (so ACP sessions can use gh)
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 # acpx strips GH_TOKEN/GITHUB_TOKEN from spawned processes,
 # so gh must be authenticated via its own credential store.
