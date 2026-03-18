@@ -63,9 +63,11 @@ For each due source:
      - `xurl "/2/lists/<list_id>/tweets?max_results=10&tweet.fields=created_at,author_id,text&expansions=author_id&user.fields=username,name"`
      - Hard limit: **10 tweets per scan** to control API costs ($0.005/tweet).
      - On error or rate limit, skip Twitter for this cycle and note in report.
+     - "Not found" on list ID: Bearer Token auth only works with **public** lists. Tell the user to make their list public on X, not to change the ID (unless they confirm it's wrong).
      - Do NOT use search, keyword queries, or mentions. List-only.
+     - **Tweet URLs**: construct from the response data as `https://x.com/<username>/status/<tweet_id>`. Always include in reports and drafts.
    - **RSS** (`rss`): fetch feed URL via HTTP. Parse XML for `<item>` or `<entry>` elements.
-   - **Web** (`web`): use browser tool to load page and extract relevant items.
+   - **Web** (`web`): use HTTP tool to fetch the page and parse HTML for relevant items. No browser needed.
 
 2. **Deduplicate**: compute SHA-256 hash of each URL. Run `scouter-db.sh is-scanned <hash>`. Skip already-processed items. For new items: `scouter-db.sh scan <source> <source_name> <hash> <url> <title>`.
 
@@ -88,25 +90,32 @@ For each due source:
    - Follow Do/Don't rules from USER.md strictly
    - Record via `scouter-db.sh opportunity <scanned_item_id> <original_post> <draft> <template>`
 
-6. **Report**: post a structured summary to the Discord channel:
+6. **Report**: post to the Discord channel. **One message per opportunity.** Briefing is a single summary message; each opportunity gets its own message.
 
+**Briefing message** (one per scan, only if there are briefing items):
 ```
 Scan 14:30
 
 -- BRIEFING --
 - Anthropic launches Claude 4.5 Opus with... [link]
 - New repo: agent-toolkit by LangChain... [link]
+```
 
--- OPPORTUNITIES --
+**Opportunity message** (one per opportunity):
+```
 #42 reply
 @karpathy: "Still surprised nobody has..."
+https://x.com/karpathy/status/1234567890
 ---
 The missing piece isn't the memory — it's deciding what's worth remembering.
 ---
 approve 42 | edit 42 | discard 42 | retype 42 [type]
+```
 
+```
 #43 library-review
 Source: GitHub Trending
+https://github.com/pydantic/pydantic-ai
 ---
 Pydantic AI — Agent framework with type-safe structured outputs
 
@@ -120,6 +129,7 @@ approve 43 | edit 43 | discard 43 | retype 43 [type]
    - Only post if there is new content. No empty reports.
    - Briefing: max 10 items, add "and N more items" if truncated.
    - Opportunities: never truncated. IDs are globally unique SQLite IDs. Each shows its template type after the ID.
+   - **Always include the source URL** (tweet link, article URL, repo URL) right after the source line. The user needs to track the original content.
 
 7. **Housekeeping**:
    - `scouter-db.sh set-last-scan <source_name>` for each source processed.

@@ -19,6 +19,7 @@ tailscale-serve.json
 # Personal overrides
 docker-compose.override.yaml
 Dockerfile.local
+**/USER.md
 
 # Superpowers specs and plans (local only)
 docs/superpowers/

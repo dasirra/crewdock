@@ -22,3 +22,6 @@ Twitter: list <list_id> (auth: OK|MISSING)
 Sources: N RSS, N Web
 Last scan: <timestamp> | Pending: N opportunities
 ```
+
+Issues to flag:
+- If xurl auth is OK but the list returns "not found" at scan time: Bearer Token auth only works with **public** lists. If the list is private, tell the user to make it public on X. Do not assume the ID is wrong.

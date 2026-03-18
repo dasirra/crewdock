@@ -10,7 +10,7 @@ For each due source:
 ### 1. Collect
 - **Twitter**: use xurl CLI to read from the configured X List. See `TOOLS.md` for the exact command. Hard limit: 10 tweets per scan. Do NOT use search, keywords, or mentions.
 - **RSS**: use HTTP tool to fetch the feed URL, parse XML for new entries since last scan.
-- **Web**: use browser tool to scrape the page, extract relevant items.
+- **Web**: use HTTP tool to fetch the page, parse HTML for relevant items. No browser needed.
 
 ### 2. Deduplicate
 For each collected item, compute SHA-256 hash of the URL.

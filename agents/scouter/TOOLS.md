@@ -16,6 +16,16 @@ xurl "/2/lists/<list_id>/tweets?max_results=10&tweet.fields=created_at,author_id
 
 Response includes `data[]` (tweets) and `includes.users[]` (author info). Each tweet has `id`, `text`, `created_at`, `author_id`. Expansion resolves `author_id` to username/name.
 
+### Auth and list visibility
+
+xurl uses a **Bearer Token** (app-only auth). This only grants access to **public** lists and tweets. Private or protected lists return a "not found" error even if the list ID is correct.
+
+If the user's list is private, they have two options:
+1. Make the list public on X (simplest).
+2. Switch to OAuth 2.0 User Context auth (complex, requires user login flow).
+
+On "list not found" errors, suggest checking list visibility before assuming the ID is wrong.
+
 ### Cost control
 
 Twitter API uses consumption-based billing:
@@ -47,11 +57,11 @@ Fetch the URL, then parse the XML response:
 - Atom feeds: look for `<entry>` elements with `<title>`, `<link>`, `<published>`
 - RSS 2.0 feeds: look for `<item>` elements with `<title>`, `<link>`, `<pubDate>`
 
-## Browser tool
+## Web sources (HTTP fetch)
 
-Use the gateway's browser tool for pages that require JavaScript rendering (e.g., GitHub Trending).
+Use the gateway's HTTP tool (or `web_fetch`) to fetch web pages. Most pages Scouter monitors (e.g., GitHub Trending) are server-side rendered and do not require a browser.
 
-Extract relevant items from the rendered DOM. Each page may need different selectors.
+Parse the HTML response to extract relevant items (trending repos, headlines, etc.). Each page may need different selectors or patterns.
 
 ## scouter-db.sh
 
