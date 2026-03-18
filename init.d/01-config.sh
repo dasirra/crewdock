@@ -91,22 +91,30 @@ CORE=$(jq -n \
             defaults: {
                 memorySearch: { enabled: false }
             },
-            list: [
-                $agents[] | {
-                    id: .id,
-                    name: .id,
-                    workspace: ($workspace + "/agents/" + .id),
-                    agentDir: ($workspace + "/agents/" + .id)
-                } + (if .channel != "" then {
-                    heartbeat: {
-                        every: "0m",
-                        target: "discord",
-                        to: ("channel:" + .channel),
-                        accountId: .id,
-                        directPolicy: "block"
-                    }
-                } else {} end)
-            ]
+            list: (
+                [{
+                    id: "main",
+                    name: "Overlord",
+                    identity: { name: "Overlord" },
+                    workspace: ($workspace + "/agents/main"),
+                    agentDir: ($workspace + "/agents/main")
+                }] + [
+                    $agents[] | {
+                        id: .id,
+                        name: .id,
+                        workspace: ($workspace + "/agents/" + .id),
+                        agentDir: ($workspace + "/agents/" + .id)
+                    } + (if .channel != "" then {
+                        heartbeat: {
+                            every: "0m",
+                            target: "discord",
+                            to: ("channel:" + .channel),
+                            accountId: .id,
+                            directPolicy: "block"
+                        }
+                    } else {} end)
+                ]
+            )
         },
 
         channels: {
