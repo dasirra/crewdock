@@ -8,7 +8,7 @@
 # Support standalone preview mode (used by 'make config-preview')
 if [ -z "${SCRIPT_NAME:-}" ]; then
     SCRIPT_NAME="01-config"
-    log() { echo "[preview] $*"; }
+    log() { echo "[preview] $*" >&2; }
     DISCORD_AGENTS="${DISCORD_AGENTS:-forge scouter alfred}"
 fi
 
