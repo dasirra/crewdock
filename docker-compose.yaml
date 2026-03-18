@@ -7,7 +7,6 @@ services:
         OPENCLAW_VERSION: ${OPENCLAW_VERSION:-latest}
     container_name: openclaw-gateway
     restart: unless-stopped
-    init: true
     network_mode: "host"
     environment:
       - NODE_ENV=production
