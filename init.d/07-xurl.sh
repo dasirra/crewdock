@@ -2,8 +2,6 @@
 # 07-xurl.sh -- X/Twitter API auth for xurl CLI
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 
-XURL_DIR="$HOME/.xurl"
-
 # Check if xurl already has a bearer token configured
 if xurl auth status 2>/dev/null | grep -q "bearer: ✓"; then
     log "xurl already authenticated."
@@ -13,7 +11,6 @@ fi
 # Auto-configure bearer token if provided via env var
 if [ -n "${X_BEARER_TOKEN:-}" ]; then
     log "Configuring xurl with bearer token..."
-    mkdir -p "$XURL_DIR"
     xurl auth apps add scouter --client-id "${X_CLIENT_ID:-none}" --client-secret "${X_CLIENT_SECRET:-none}" 2>/dev/null || true
     xurl auth app --bearer-token "$X_BEARER_TOKEN" 2>/dev/null
     if xurl auth status >/dev/null 2>&1; then
