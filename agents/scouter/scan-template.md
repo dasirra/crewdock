@@ -8,7 +8,7 @@
 For each due source:
 
 ### 1. Collect
-- **Twitter**: use xurl CLI to fetch new posts from lists, keyword searches, and mentions since last scan.
+- **Twitter**: use xurl CLI to read from the configured X List. See `TOOLS.md` for the exact command. Hard limit: 10 tweets per scan. Do NOT use search, keywords, or mentions.
 - **RSS**: use HTTP tool to fetch the feed URL, parse XML for new entries since last scan.
 - **Web**: use browser tool to scrape the page, extract relevant items.
 

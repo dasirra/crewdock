@@ -37,9 +37,8 @@ On each heartbeat tick:
 
 **Config management:**
 - "add feed [url]" — add an RSS source to config.json
-- "add keyword [term]" — add a Twitter keyword to config.json
 - "remove feed [name]" — remove an RSS source
-- "remove keyword [term]" — remove a Twitter keyword
+- "set list [list_id]" — change the X List to monitor
 
 Changes take effect on the next heartbeat.
 
@@ -60,11 +59,11 @@ To check if due: compare schedule against `scouter-db.sh last-scan <source_name>
 For each due source:
 
 1. **Collect** content:
-   - **Twitter** (`twitter`): use xurl CLI.
-     - Lists: `xurl api get /2/lists/:id/tweets` for each list ID
-     - Keywords: `xurl api get /2/tweets/search/recent?query=<keyword>`
-     - Mentions: `xurl api get /2/users/:id/mentions` if `mentions: true`
-     - On rate limit error, skip Twitter for this cycle and note in report.
+   - **Twitter** (`twitter`): use xurl CLI to read from a predefined X List.
+     - `xurl "/2/lists/<list_id>/tweets?max_results=10&tweet.fields=created_at,author_id,text&expansions=author_id&user.fields=username,name"`
+     - Hard limit: **10 tweets per scan** to control API costs ($0.005/tweet).
+     - On error or rate limit, skip Twitter for this cycle and note in report.
+     - Do NOT use search, keyword queries, or mentions. List-only.
    - **RSS** (`rss`): fetch feed URL via HTTP. Parse XML for `<item>` or `<entry>` elements.
    - **Web** (`web`): use browser tool to load page and extract relevant items.
 
@@ -133,10 +132,9 @@ approve 43 | edit 43 | discard 43 | retype 43 [type]
   "timezone": "Europe/Madrid",
   "sources": {
     "twitter": {
-      "schedule": "every-30m",
-      "lists": ["ai-leaders"],
-      "keywords": ["new LLM", "open source AI"],
-      "mentions": true
+      "schedule": "twice-daily",
+      "list_id": "1234567890",
+      "max_results": 10
     },
     "rss": [
       { "name": "Anthropic Blog", "url": "https://...", "schedule": "twice-daily" }
@@ -148,14 +146,15 @@ approve 43 | edit 43 | discard 43 | retype 43 [type]
 }
 ```
 
-**Twitter** (single object, scanned as one unit due to rate limits):
+**Twitter** (single object, reads from one X List):
 
-| Field | Required | Description |
-|---|---|---|
-| `schedule` | Yes | How often to scan |
-| `lists` | No | X list IDs to monitor |
-| `keywords` | No | Search terms |
-| `mentions` | No | Monitor mentions (default: `false`) |
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `schedule` | Yes | — | How often to scan (use `twice-daily`) |
+| `list_id` | Yes | — | X List ID to monitor |
+| `max_results` | No | `10` | Tweets per scan (max 100, keep low for cost control) |
+
+**Cost control:** Twitter API is consumption-based ($0.005/tweet read). At 10 tweets x 2 scans/day = $0.10/day. Do NOT add search, keywords, or mentions.
 
 **RSS/Web** (array of objects, each with own schedule):
 
