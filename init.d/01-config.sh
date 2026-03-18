@@ -144,8 +144,7 @@ CORE=$(jq -n \
         bindings: [
             $agents[] | {
                 agentId: .id,
-                channel: "discord",
-                accountId: .id
+                match: { channel: "discord", accountId: .id }
             }
         ],
 
