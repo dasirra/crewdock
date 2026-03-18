@@ -4,8 +4,8 @@
 
 XURL_DIR="$HOME/.xurl"
 
-# Check if xurl is already authenticated
-if [ -d "$XURL_DIR" ] && xurl auth status >/dev/null 2>&1; then
+# Check if xurl already has a bearer token configured
+if xurl auth status 2>/dev/null | grep -q "bearer: ✓"; then
     log "xurl already authenticated."
     return 0
 fi
