@@ -163,6 +163,15 @@ CORE=$(jq -n \
             backend: "acpx"
         },
 
+        hooks: {
+            internal: {
+                enabled: true,
+                entries: {
+                    "boot-md": { enabled: true }
+                }
+            }
+        },
+
         session: {
             threadBindings: { enabled: true }
         }
