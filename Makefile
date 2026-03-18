@@ -1,4 +1,4 @@
-.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version shell cli onboard openai-codex update clean help
+.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli onboard openai-codex update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -78,6 +78,12 @@ version:           ## Show pinned, running, and latest versions
 	@LATEST=$$(curl -sf "https://api.github.com/orgs/openclaw/packages/container/openclaw/versions?per_page=1" \
 	  | jq -r '.[0].metadata.container.tags[0]' 2>/dev/null || echo 'unknown'); \
 	echo "Latest:    $$LATEST"
+
+config-preview:    ## Preview openclaw.json that would be generated (no Docker needed)
+	@set -a && [ -f .env ] && . ./.env || true && set +a && \
+	  DISCORD_AGENTS="forge scouter alfred" \
+	  HOME="." \
+	  bash init.d/01-config.sh --preview
 
 # --- CLI tools ---
 
