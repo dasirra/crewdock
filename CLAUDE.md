@@ -21,6 +21,7 @@ make restart            # Restart all; make restart-gateway for just gateway
 make logs               # Tail gateway logs; make logs-all for all services
 make shell              # Bash into the gateway container
 make update             # Pull latest image, rebuild, restart
+make config-preview     # Preview generated openclaw.json (no Docker needed)
 ```
 
 ## Project Structure
@@ -95,7 +96,7 @@ For partial config updates from agent code, use `config.patch` RPC (requires `ba
 
 ## Key Patterns
 
-- **Agent installation:** Agent templates are baked into the Docker image at `/opt/openclaw-agents/` and copied to the workspace volume on first boot by `init.d/04-agents.sh`. Edit templates in `agents/forge/`, rebuild the image with `make up` to pick up changes. The init script skips agents whose sentinel file (`SOUL.md`) already exists.
+- **Agent installation:** Agent templates are baked into the Docker image at `/opt/openclaw-agents/` and copied to the workspace volume on first boot by `init.d/03-agents.sh`. Edit templates in `agents/forge/`, rebuild the image with `make up` to pick up changes. The init script skips agents whose workspace directory already exists.
 - **Forge config changes:** Forge can modify `config.json` only when the user explicitly asks. Never autonomously.
 - **Autopilot sessions:** hybrid spawn — `sessions_spawn` (native runtime, no `agentId`) with `thread: true` creates a Discord thread; the native session invokes `acpx` CLI directly for the coding work. This works around the ACP runtime flag-ordering bug.
 - **Concurrency:** checked via `sessions_list` counting `autopilot-*` sessions, capped at `defaults.maxConcurrentSessions`.
