@@ -34,6 +34,9 @@ services:
       - DISCORD_ALFRED_TOKEN=${DISCORD_ALFRED_TOKEN:-}
       - DISCORD_ALFRED_CHANNEL=${DISCORD_ALFRED_CHANNEL:-}
       - DISCORD_GUILD=${DISCORD_GUILD:-}
+      - X_BEARER_TOKEN=${X_BEARER_TOKEN:-}
+      - X_CLIENT_ID=${X_CLIENT_ID:-}
+      - X_CLIENT_SECRET=${X_CLIENT_SECRET:-}
       - GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE=/home/node/.config/gws/credentials.json
     volumes:
       - ./config/openclaw:/home/node/.openclaw
@@ -41,5 +44,6 @@ services:
       - ./projects:/home/node/projects
       - ./config/claude:/home/node/.claude
       - ./config/gh:/home/node/.config/gh
+      - ./config/xurl:/home/node/.xurl
       - ./config/gws:/home/node/.config/gws
     command: ["node", "dist/index.js", "gateway", "--allow-unconfigured"]

@@ -61,7 +61,7 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
                 continue
             fi
 
-            cp "$src_file" "$target/$filename"
+            cp -r "$src_file" "$target/$filename"
             log "  Synced: $filename"
         done
 

@@ -1,4 +1,4 @@
-.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli onboard openai-codex update clean help
+.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli onboard auth-xurl openai-codex update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -10,7 +10,7 @@ setup:             ## First-time setup: check Docker, create dirs, copy example 
 	@docker info >/dev/null 2>&1 || { echo "ERROR: Docker daemon is not running."; exit 1; }
 	@docker compose version >/dev/null 2>&1 || { echo "ERROR: docker compose is not available."; exit 1; }
 	@echo "Docker OK."
-	@mkdir -p config/openclaw config/claude config/gh config/gws workspace projects
+	@mkdir -p config/openclaw config/claude config/gh config/gws config/xurl workspace projects
 	@echo "Runtime directories created."
 	@# Copy example files (skip if target already exists)
 	@for pair in \
@@ -95,6 +95,9 @@ cli:               ## Open interactive CLI
 
 onboard:           ## Run onboarding (for auth setup)
 	docker compose exec openclaw-gateway node dist/index.js onboard
+
+auth-xurl:         ## Set up X/Twitter API auth interactively
+	docker compose exec openclaw-gateway xurl auth
 
 openai-codex:      ## Set up OpenAI Codex OAuth and make it the default model
 	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
