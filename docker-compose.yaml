@@ -44,6 +44,6 @@ services:
       - ./projects:/home/node/projects
       - ./config/claude:/home/node/.claude
       - ./config/gh:/home/node/.config/gh
-      - ./config/xurl:/home/node/.xurl
+      - ./config/xurl.yaml:/home/node/.xurl
       - ./config/gws:/home/node/.config/gws
     command: ["node", "dist/index.js", "gateway", "--allow-unconfigured"]
