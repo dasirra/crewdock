@@ -91,7 +91,11 @@ CORE=$(jq -n \
 
         agents: {
             defaults: {
-                memorySearch: { enabled: false }
+                memorySearch: { enabled: false },
+                model: {
+                    primary: "openai-codex/gpt-5.4",
+                    fallbacks: ["anthropic/claude-sonnet-4-6"]
+                }
             },
             list: (
                 [{

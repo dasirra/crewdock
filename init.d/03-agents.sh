@@ -75,7 +75,8 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
     fi
 done
 
-# Shared USER.md: install once, symlink into each agent
+# Shared USER.md: install once, copy into each agent
+# (symlinks cause "outside its configured root" warnings from OpenClaw skill loader)
 if [ -f "$AGENT_TEMPLATES/USER.example.md" ] && [ ! -f "$WORKSPACE/agents/USER.md" ]; then
     cp "$AGENT_TEMPLATES/USER.example.md" "$WORKSPACE/agents/USER.md"
     log "Installed shared USER.md (edit to configure your voice profile)."
@@ -83,11 +84,10 @@ fi
 if [ -f "$WORKSPACE/agents/USER.md" ]; then
     for agent_dir in "$WORKSPACE"/agents/*/; do
         [ -d "$agent_dir" ] || continue
-        link="$agent_dir/USER.md"
-        [ -L "$link" ] && continue
-        [ -f "$link" ] && rm "$link"  # replace stale copy with symlink
-        ln -s ../USER.md "$link"
-        log "Linked USER.md -> $(basename "$agent_dir")/"
+        target="$agent_dir/USER.md"
+        [ -L "$target" ] && rm "$target"  # replace old symlink with copy
+        cp "$WORKSPACE/agents/USER.md" "$target"
+        log "Copied USER.md -> $(basename "$agent_dir")/"
     done
 fi
 

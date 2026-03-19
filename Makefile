@@ -1,4 +1,4 @@
-.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth-xurl openai-codex update clean help
+.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth-anthropic auth-xurl auth-codex update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -114,14 +114,20 @@ dashboard:         ## Open dashboard: auto-approve pending devices, print URL
 onboard:           ## Run onboarding (for auth setup)
 	docker compose exec openclaw-gateway node dist/index.js onboard
 
+auth-anthropic:    ## Set up Anthropic OAuth (interactive paste-token)
+	@echo ""
+	@echo "  WARNING: Using Anthropic OAuth subscription tokens outside of official"
+	@echo "  Claude tools may violate Anthropic's Terms of Service. Your account"
+	@echo "  could be suspended or banned. Use at your own risk."
+	@echo ""
+	@read -p "  Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || { echo "Aborted."; exit 1; }
+	docker compose exec openclaw-gateway node dist/index.js models auth paste-token --provider anthropic
+
 auth-xurl:         ## Set up X/Twitter API auth interactively
 	docker compose exec openclaw-gateway xurl auth
 
-openai-codex:      ## Set up OpenAI Codex OAuth and make it the default model
+auth-codex:        ## Set up OpenAI Codex OAuth
 	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
-	docker compose exec openclaw-gateway node dist/index.js config set agents.defaults.model.primary openai-codex/gpt-5.4
-	docker compose exec openclaw-gateway node dist/index.js config set agents.defaults.model.fallbacks '["anthropic/claude-sonnet-4-6"]' --json
-	@echo "Default model set to openai-codex/gpt-5.4 (fallback: anthropic/claude-sonnet-4-6)"
 
 # --- Updates ---
 
