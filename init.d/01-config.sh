@@ -76,6 +76,7 @@ log "Discord agents: $(echo "$AGENTS_DATA" | jq -r '[.[].id] | join(", ")') ($(e
 # ---------- Step 4: Build core config with jq ----------
 
 CORE=$(jq -n \
+    --arg bind "${OPENCLAW_GATEWAY_BIND:-loopback}" \
     --arg guild "${DISCORD_GUILD:-}" \
     --arg workspace "$WORKSPACE" \
     --argjson agents "$AGENTS_DATA" \
@@ -83,6 +84,7 @@ CORE=$(jq -n \
     {
         gateway: {
             mode: "local",
+            bind: ($bind),
             auth: { token: { source: "env", provider: "default", id: "OPENCLAW_GATEWAY_TOKEN" } },
             controlUi: { allowedOrigins: ["*"] }
         },
@@ -119,7 +121,6 @@ CORE=$(jq -n \
 
         channels: {
             discord: {
-                groupPolicy: "open",
                 accounts: (
                     $agents | map({
                         key: .id,
