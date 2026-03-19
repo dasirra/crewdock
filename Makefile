@@ -40,6 +40,8 @@ setup:             ## First-time setup: check Docker, create dirs, copy example 
 # --- Daily operations ---
 
 up:                ## Build and start all services (pulls base image if version changed)
+	@mkdir -p config/openclaw config/claude config/gh config/gws workspace projects
+	@[ -f config/xurl.yaml ] || touch config/xurl.yaml
 	@IMAGE_ID=$$(docker images -q ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION) 2>/dev/null); \
 	if [ -z "$$IMAGE_ID" ]; then \
 		echo "Pulling ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION)..."; \
@@ -48,6 +50,8 @@ up:                ## Build and start all services (pulls base image if version 
 	docker compose up -d --build
 
 up-debug:          ## Build and start in foreground (no daemon, for debugging)
+	@mkdir -p config/openclaw config/claude config/gh config/gws workspace projects
+	@[ -f config/xurl.yaml ] || touch config/xurl.yaml
 	@IMAGE_ID=$$(docker images -q ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION) 2>/dev/null); \
 	if [ -z "$$IMAGE_ID" ]; then \
 		echo "Pulling ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION)..."; \
