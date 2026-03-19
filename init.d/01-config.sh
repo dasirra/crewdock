@@ -76,6 +76,7 @@ log "Discord agents: $(echo "$AGENTS_DATA" | jq -r '[.[].id] | join(", ")') ($(e
 # ---------- Step 4: Build core config with jq ----------
 
 CORE=$(jq -n \
+    --arg bind "${OPENCLAW_GATEWAY_BIND:-loopback}" \
     --arg guild "${DISCORD_GUILD:-}" \
     --arg workspace "$WORKSPACE" \
     --argjson agents "$AGENTS_DATA" \
@@ -83,6 +84,7 @@ CORE=$(jq -n \
     {
         gateway: {
             mode: "local",
+            bind: ($bind),
             auth: { token: { source: "env", provider: "default", id: "OPENCLAW_GATEWAY_TOKEN" } },
             controlUi: { allowedOrigins: ["*"] }
         },
@@ -91,27 +93,34 @@ CORE=$(jq -n \
             defaults: {
                 memorySearch: { enabled: false }
             },
-            list: [
-                $agents[] | {
-                    id: .id,
-                    name: .id,
-                    workspace: ($workspace + "/agents/" + .id),
-                    agentDir: ($workspace + "/agents/" + .id)
-                } + (if .channel != "" then {
-                    heartbeat: {
-                        every: "0m",
-                        target: "discord",
-                        to: ("channel:" + .channel),
-                        accountId: .id,
-                        directPolicy: "block"
-                    }
-                } else {} end)
-            ]
+            list: (
+                [{
+                    id: "main",
+                    name: "Overlord",
+                    identity: { name: "Overlord" },
+                    workspace: ($workspace + "/agents/main"),
+                    agentDir: ($workspace + "/agents/main")
+                }] + [
+                    $agents[] | {
+                        id: .id,
+                        name: .id,
+                        workspace: ($workspace + "/agents/" + .id),
+                        agentDir: ($workspace + "/agents/" + .id)
+                    } + (if .channel != "" then {
+                        heartbeat: {
+                            every: "0m",
+                            target: "discord",
+                            to: ("channel:" + .channel),
+                            accountId: .id,
+                            directPolicy: "block"
+                        }
+                    } else {} end)
+                ]
+            )
         },
 
         channels: {
             discord: {
-                groupPolicy: "open",
                 accounts: (
                     $agents | map({
                         key: .id,

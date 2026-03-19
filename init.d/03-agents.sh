@@ -11,7 +11,13 @@ WORKSPACE="$HOME/.openclaw/workspace"
 for agent_dir in "$AGENT_TEMPLATES"/*/; do
     [ -d "$agent_dir" ] || continue
     agent_name=$(basename "$agent_dir")
-    target="$WORKSPACE/agents/$agent_name"
+
+    # Overlord template installs into the pre-registered "main" agent workspace
+    if [ "$agent_name" = "overlord" ]; then
+        target="$WORKSPACE/agents/main"
+    else
+        target="$WORKSPACE/agents/$agent_name"
+    fi
 
     if [ ! -d "$target" ]; then
         # --- New agent: install workspace files ---

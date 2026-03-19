@@ -1,4 +1,4 @@
-.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli onboard auth-xurl openai-codex update clean help
+.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth-xurl openai-codex update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -93,6 +93,19 @@ shell:             ## Open bash shell in the gateway container
 
 cli:               ## Open interactive CLI
 	docker compose exec openclaw-gateway node dist/index.js
+
+dashboard:         ## Open dashboard: auto-approve pending devices, print URL
+	@TOKEN=$$(docker compose exec openclaw-gateway cat /home/node/.openclaw/.gateway-token 2>/dev/null) && \
+	PENDING=$$(docker compose exec -e OPENCLAW_GATEWAY_TOKEN=$$TOKEN openclaw-gateway \
+		node dist/index.js devices list --json 2>/dev/null | jq -r '.pending[]?.requestId // empty' 2>/dev/null) && \
+	if [ -n "$$PENDING" ]; then \
+		for req in $$PENDING; do \
+			docker compose exec -e OPENCLAW_GATEWAY_TOKEN=$$TOKEN openclaw-gateway \
+				node dist/index.js devices approve "$$req" 2>/dev/null; \
+			echo "Approved device: $$req"; \
+		done; \
+	fi && \
+	echo "http://localhost:18789/?token=$$TOKEN"
 
 onboard:           ## Run onboarding (for auth setup)
 	docker compose exec openclaw-gateway node dist/index.js onboard

@@ -1,0 +1,4 @@
+# Files that belong to the user after first install.
+# Patterns are matched against filenames using bash glob syntax.
+# One pattern per line. Blank lines and #-comments are ignored.
+USER.md
