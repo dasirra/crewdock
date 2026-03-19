@@ -71,7 +71,7 @@ The OpenClaw base image version is pinned in `.openclaw-version` (CalVer `YYYY.M
 
 Volume mount: `./home` -> `/home/node` (single persistent volume for all runtime data)
 
-Claude CLI and GWS skills are installed at first boot by `init.d/00-tools.sh` and persist in the home volume.
+Claude CLI and GWS skills are installed at first boot by `init.d/01-tools.sh` and persist in the home volume.
 
 ## Git Conventions
 
