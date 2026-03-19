@@ -1,4 +1,4 @@
-.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth-anthropic auth-xurl auth-codex update clean help
+.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth-anthropic auth-codex auth-gws auth-xurl update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -122,6 +122,15 @@ auth-anthropic:    ## Set up Anthropic OAuth (interactive paste-token)
 	@echo ""
 	@read -p "  Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || { echo "Aborted."; exit 1; }
 	docker compose exec openclaw-gateway node dist/index.js models auth paste-token --provider anthropic
+
+auth-gws:          ## Set up Google Workspace credentials by pasting JSON
+	@echo ""
+	@echo "  Paste your GWS credentials JSON below, then press Enter and Ctrl+D:"
+	@echo ""
+	@mkdir -p home/.config/gws
+	@cat > home/.config/gws/credentials.json
+	@echo ""
+	@echo "  Credentials saved to home/.config/gws/credentials.json"
 
 auth-xurl:         ## Set up X/Twitter API auth interactively
 	docker compose exec openclaw-gateway xurl auth
