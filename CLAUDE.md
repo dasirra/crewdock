@@ -28,12 +28,11 @@ make config-preview     # Preview generated openclaw.json (no Docker needed)
 
 ```
 agents/forge/           # Forge agent definition (tracked in git, copied to workspace on setup)
-config/                 # Runtime config — openclaw, claude, gws, syncthing (gitignored)
-workspace/              # Runtime agent data — installed agents, vault, memory (gitignored)
+home/                   # Persistent /home/node volume — all runtime config and data (gitignored)
 projects/               # Cloned repos Forge works on (gitignored)
 ```
 
-Only `agents/`, `docker-compose.yaml`, `Dockerfile`, `docker-entrypoint.sh`, `init.d/`, `Makefile`, and `docs/` are tracked in git. Everything under `config/`, `workspace/`, and `projects/` is gitignored runtime data.
+Only `agents/`, `docker-compose.yaml`, `Dockerfile`, `docker-entrypoint.sh`, `init.d/`, `Makefile`, and `docs/` are tracked in git. Everything under `home/` and `projects/` is gitignored runtime data.
 
 ## Forge Architecture
 
@@ -66,16 +65,16 @@ The OpenClaw base image version is pinned in `.openclaw-version` (CalVer `YYYY.M
 ## Docker Setup
 
 - Base image: `ghcr.io/openclaw/openclaw:<version>` (Debian-based, version from `.openclaw-version`)
-- `Dockerfile` adds: git, gh CLI, jq, sqlite3, python3, build-essential, Claude CLI
+- `Dockerfile` adds: git, gh CLI, jq, sqlite3, python3, build-essential
 - `Dockerfile.local` — personal tool additions (gitignored, built from `.example`)
 - `docker-compose.override.yaml` — personal service additions (gitignored, merges automatically)
 - Network mode: host. Container user: `node`. Home: `/home/node`
 
-Volume mounts map local dirs into the container:
-- `./config/openclaw` -> `/home/node/.openclaw`
-- `./workspace` -> `/home/node/.openclaw/workspace`
+Volume mounts:
+- `./home` -> `/home/node` (persistent home, includes .openclaw, .claude, .config)
 - `./projects` -> `/home/node/projects`
-- `./config/claude` -> `/home/node/.claude`
+
+Claude CLI and GWS skills are installed at first boot by `init.d/00-tools.sh` and persist in the home volume.
 
 ## Git Conventions
 

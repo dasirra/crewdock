@@ -56,16 +56,8 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
 RUN mkdir -p /home/node/projects /var/tmp/openclaw-compile-cache \
     && chown -R node:node /home/node /var/tmp/openclaw-compile-cache
 
-USER node
 ENV PATH="/home/node/.local/bin:${PATH}"
 
-# Claude Code CLI
-RUN curl -fsSL https://claude.ai/install.sh | bash
-
-# Google Workspace agent skills
-RUN npx -y skills add https://github.com/googleworkspace/cli -y
-
 # Entrypoint runs as root to fix volume permissions, then drops to node
-USER root
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "dist/index.js", "gateway", "--allow-unconfigured"]

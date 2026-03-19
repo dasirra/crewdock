@@ -11,8 +11,8 @@ if [ -f "$GH_HOSTS" ]; then
     return 0
 fi
 
-if [ -z "${GITHUB_TOKEN:-}" ]; then
-    log "GITHUB_TOKEN not set, skipping gh auth."
+if [ -z "${GH_TOKEN:-}" ]; then
+    log "GH_TOKEN not set, skipping gh auth."
     return 0
 fi
 
@@ -22,7 +22,7 @@ log "Persisting GitHub CLI credentials..."
 mkdir -p "$(dirname "$GH_HOSTS")"
 cat > "$GH_HOSTS" <<EOF
 github.com:
-    oauth_token: $GITHUB_TOKEN
+    oauth_token: $GH_TOKEN
     git_protocol: https
 EOF
 

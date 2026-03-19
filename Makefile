@@ -10,8 +10,8 @@ setup:             ## First-time setup: check Docker, create dirs, copy example 
 	@docker info >/dev/null 2>&1 || { echo "ERROR: Docker daemon is not running."; exit 1; }
 	@docker compose version >/dev/null 2>&1 || { echo "ERROR: docker compose is not available."; exit 1; }
 	@echo "Docker OK."
-	@mkdir -p config/openclaw config/claude config/gh config/gws workspace projects
-	@touch config/xurl.yaml
+	@mkdir -p home/.openclaw/workspace home/.claude home/.config/gh home/.config/gws projects
+	@touch home/.xurl
 	@echo "Runtime directories created."
 	@# Copy example files (skip if target already exists)
 	@for pair in \
@@ -28,10 +28,10 @@ setup:             ## First-time setup: check Docker, create dirs, copy example 
 	  fi; \
 	done
 	@# Install GWS credentials if provided
-	@if [ -f "credentials.json" ] && [ ! -f "config/gws/credentials.json" ]; then \
-		cp credentials.json config/gws/credentials.json; \
-		echo "  GWS credentials installed to config/gws/"; \
-	elif [ ! -f "config/gws/credentials.json" ]; then \
+	@if [ -f "credentials.json" ] && [ ! -f "home/.config/gws/credentials.json" ]; then \
+		cp credentials.json home/.config/gws/credentials.json; \
+		echo "  GWS credentials installed to home/.config/gws/"; \
+	elif [ ! -f "home/.config/gws/credentials.json" ]; then \
 		echo "  (optional) For Google Workspace: place credentials.json in project root and re-run make setup"; \
 	fi
 	@echo ""
@@ -40,8 +40,8 @@ setup:             ## First-time setup: check Docker, create dirs, copy example 
 # --- Daily operations ---
 
 up:                ## Build and start all services (pulls base image if version changed)
-	@mkdir -p config/openclaw config/claude config/gh config/gws workspace projects
-	@[ -f config/xurl.yaml ] || touch config/xurl.yaml
+	@mkdir -p home/.openclaw/workspace home/.claude home/.config/gh home/.config/gws projects
+	@[ -f home/.xurl ] || touch home/.xurl
 	@IMAGE_ID=$$(docker images -q ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION) 2>/dev/null); \
 	if [ -z "$$IMAGE_ID" ]; then \
 		echo "Pulling ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION)..."; \
@@ -50,8 +50,8 @@ up:                ## Build and start all services (pulls base image if version 
 	docker compose up -d --build
 
 up-debug:          ## Build and start in foreground (no daemon, for debugging)
-	@mkdir -p config/openclaw config/claude config/gh config/gws workspace projects
-	@[ -f config/xurl.yaml ] || touch config/xurl.yaml
+	@mkdir -p home/.openclaw/workspace home/.claude home/.config/gh home/.config/gws projects
+	@[ -f home/.xurl ] || touch home/.xurl
 	@IMAGE_ID=$$(docker images -q ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION) 2>/dev/null); \
 	if [ -z "$$IMAGE_ID" ]; then \
 		echo "Pulling ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION)..."; \

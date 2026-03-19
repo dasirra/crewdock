@@ -12,5 +12,5 @@ fi
 log "Google Workspace CLI credentials not found at $GWS_CREDS"
 log "To authenticate (requires a browser):"
 log "  1. On your local machine: npx @googleworkspace/cli auth login"
-log "  2. Export credentials:    npx @googleworkspace/cli auth export --unmasked > config/gws/credentials.json"
+log "  2. Export credentials:    npx @googleworkspace/cli auth export --unmasked > home/.config/gws/credentials.json"
 log "  3. Restart the container: make restart"
