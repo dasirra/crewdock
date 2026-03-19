@@ -128,7 +128,9 @@ auth-gws:          ## Set up Google Workspace credentials by pasting JSON
 	@echo "  Paste your GWS credentials JSON below, then press Enter and Ctrl+D:"
 	@echo ""
 	@mkdir -p home/.config/gws
+	@chmod 755 home/.config/gws
 	@cat > home/.config/gws/credentials.json
+	@chmod 644 home/.config/gws/credentials.json
 	@echo ""
 	@echo "  Credentials saved to home/.config/gws/credentials.json"
 
