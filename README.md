@@ -158,3 +158,49 @@ drafts go through you on Discord.
 
 Comes with 8 post templates: build logs, library reviews, news commentary,
 original takes, quote tweets, replies, resource shares, and threads.
+
+## Prerequisites
+
+- Docker and Docker Compose
+- A [Discord bot token](https://discord.com/developers/applications) per agent (Forge, Alfred, Scouter) + a Discord server
+- A [Claude Code OAuth token](https://claude.ai/code) — for Forge coding sessions
+- A [GitHub personal access token](https://github.com/settings/tokens) with `repo` scope — for Forge PRs and `gh` CLI
+- Google Workspace credentials (optional) — for Alfred. Set up via `make auth-gws`.
+
+## Installation
+
+### 1. Clone and setup
+
+```bash
+git clone https://github.com/dasirra/crewdock.git
+cd crewdock
+make setup
+```
+
+This creates `.env`, runtime directories, and local config files from their examples.
+
+### 2. Configure Discord and API keys
+
+```bash
+nano .env
+```
+
+Fill in your Discord bot tokens, `CLAUDE_CODE_OAUTH_TOKEN`, and `GH_TOKEN`.
+
+### 3. Build and start
+
+```bash
+make up
+```
+
+### 4. Authenticate your LLM provider
+
+With the gateway running, authenticate the model provider for the agents:
+
+```bash
+make auth-anthropic   # Anthropic OAuth
+make auth-codex       # OpenAI Codex OAuth
+```
+
+That's it. Agents are ready to use via Discord. Each one can be configured
+through conversation — just message it.
