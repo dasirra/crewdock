@@ -204,3 +204,126 @@ make auth-codex       # OpenAI Codex OAuth
 
 That's it. Agents are ready to use via Discord. Each one can be configured
 through conversation — just message it.
+
+## Configuration
+
+### Environment Variables
+
+Copy `.env.example` to `.env` (done by `make setup`) and fill in your values.
+
+**Required:**
+
+| Variable | Description |
+|---|---|
+| `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code OAuth token (Forge sessions + LLM provider auth) |
+| `GH_TOKEN` | GitHub PAT with `repo` scope minimum |
+
+**Git identity (for agent commits):**
+
+| Variable | Default | Description |
+|---|---|---|
+| `GIT_AUTHOR_NAME` | `Claude Dev` | Commit author name |
+| `GIT_AUTHOR_EMAIL` | `claude-dev@localhost` | Commit author email |
+
+**Discord (one bot per agent):**
+
+| Variable | Description |
+|---|---|
+| `DISCORD_FORGE_TOKEN` | Bot token for Forge |
+| `DISCORD_FORGE_CHANNEL` | Channel ID for Forge |
+| `DISCORD_SCOUTER_TOKEN` | Bot token for Scouter |
+| `DISCORD_SCOUTER_CHANNEL` | Channel ID for Scouter |
+| `DISCORD_ALFRED_TOKEN` | Bot token for Alfred |
+| `DISCORD_ALFRED_CHANNEL` | Channel ID for Alfred |
+| `DISCORD_GUILD` | Server (guild) ID — required if any agent token is set |
+
+**X/Twitter API (optional, for Scouter):**
+
+| Variable | Description |
+|---|---|
+| `X_BEARER_TOKEN` | Bearer token for read-only X API v2 access |
+| `X_CLIENT_ID` | Client ID (only for OAuth 2.0 user-context auth) |
+| `X_CLIENT_SECRET` | Client secret (only for OAuth 2.0 user-context auth) |
+
+**Auto-managed:**
+
+| Variable | Description |
+|---|---|
+| `OPENCLAW_GATEWAY_TOKEN` | Gateway auth token (generated on first boot if not set) |
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `make setup` | First-time setup: create dirs, copy example files |
+| `make up` | Build and start all services |
+| `make up-debug` | Build and start in foreground (no daemon) |
+| `make down` | Stop all services |
+| `make restart` | Restart all services |
+| `make restart-gateway` | Restart only the gateway |
+| `make logs` | Tail gateway logs |
+| `make logs-all` | Tail all service logs |
+| `make status` | Show running containers |
+| `make version` | Show pinned, running, and latest versions |
+| `make shell` | Open bash shell in the gateway container |
+| `make cli` | Open interactive OpenClaw CLI |
+| `make dashboard` | Auto-approve pending devices, print dashboard URL |
+| `make onboard` | Run onboarding wizard (LLM + integrations) |
+| `make update` | Check for new OpenClaw version, rebuild if newer |
+| `make clean` | Remove dangling Docker images |
+| `make auth-anthropic` | Authenticate Anthropic OAuth |
+| `make auth-codex` | Authenticate OpenAI Codex OAuth |
+| `make auth-gws` | Set up Google Workspace credentials |
+| `make auth-xurl` | Set up X/Twitter API auth |
+| `make config-preview` | Preview generated openclaw.json without Docker |
+| `make help` | Show all available commands |
+
+## Project Structure
+
+```
+crewdock/
+├── agents/                        # Agent templates (tracked in git)
+│   ├── overlord/                  # System admin agent
+│   ├── forge/                     # Dev autopilot agent
+│   ├── alfred/                    # Personal assistant agent
+│   ├── scouter/                   # Intel radar agent
+│   ├── USER.md                    # User profile shared across agents (gitignored)
+│   └── USER.example.md
+├── claude/                        # Claude CLI commands
+├── init.d/                        # Boot scripts (run on container start)
+├── home/                          # Persistent /home/node volume (gitignored)
+│   ├── .openclaw/                 # Gateway config + agent workspaces
+│   ├── .claude/                   # Claude CLI config
+│   └── .config/                   # gh, gws, xurl credentials
+├── docker-compose.yaml            # Core service definition
+├── docker-compose.override.yaml   # Personal additions (gitignored)
+├── Dockerfile                     # Base image + core tools
+├── Dockerfile.local               # Personal tool additions (gitignored)
+├── docker-entrypoint.sh           # Container entrypoint
+├── Makefile                       # Setup, build, and management commands
+└── .openclaw-version              # Pinned OpenClaw base image version
+```
+
+## Extending
+
+### Custom Tools
+
+Copy `Dockerfile.local.example` to `Dockerfile.local` and add your own tools:
+
+```dockerfile
+FROM openclaw-openclaw-gateway:latest
+
+USER root
+RUN apt-get update && apt-get install -y your-tools
+USER node
+```
+
+### Additional Services
+
+Copy `docker-compose.override.example.yaml` to `docker-compose.override.yaml`
+and add services. Docker Compose merges it automatically. Both files are
+gitignored so personal additions won't conflict with upstream updates.
+
+## License
+
+MIT
