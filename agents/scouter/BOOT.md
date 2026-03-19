@@ -1,55 +1,61 @@
 # Boot
 
-Read `config.json` to determine boot type. If the file is missing or empty, run **First Boot**. If present and valid, run **Returning Boot**.
+Run a status check and report to Discord.
 
-Run all health checks regardless of boot type. Collect results before producing output.
+1. Read `config.json`. If missing or empty, this is a **first boot**.
+2. Run health checks (all checks run regardless of boot type).
+3. If first boot, use "First Boot" output.
+4. If returning boot, use "Returning Boot" output.
 
 ## Health Checks
 
-Run these in order. If any check command fails, report it as failed with the error output. Do not skip checks.
+Run these in order. Record pass/fail for each.
 
-1. **Config**: `config.json` present and not empty.
-2. **Database**: `scouter-db.sh init` (idempotent, ensures DB and migrations are current).
-3. **Twitter auth**: `xurl auth status`. Record whether bearer token is present.
-4. **Heartbeat**: `openclaw config get agents.list`, find this agent's entry, read `.heartbeat.every`. Value `"0m"` or absent means disabled.
-5. **Source counts**: count Twitter list, RSS, and Web sources from config.
-6. **Scan state**: `scouter-db.sh last-scan` and `scouter-db.sh pending`.
+1. `config.json` present and not empty.
+2. `scouter-db.sh init` (idempotent, ensures DB and migrations are current).
+3. `xurl auth status`. Record whether bearer token is present.
+4. Heartbeat: run `openclaw config get agents.list`, parse the JSON array to find the entry matching this agent's `id`, then read `.heartbeat.every`. A value of `"0m"` or absent means disabled.
+5. Source counts: count Twitter list, RSS, and Web sources from config.
+6. `scouter-db.sh last-scan` and `scouter-db.sh pending`.
+
+If a health check command itself fails (timeout, crash), report it as failed with the error output. Do not silently skip it.
 
 ## First Boot
 
-When `config.json` is missing or empty.
+Use this output when `config.json` is missing or empty.
 
 Post to Discord:
 
 **Scouter online.** Intelligence radar and brand ghostwriter.
 
-I monitor Twitter/X lists, RSS feeds, and web sources for AI/tech content relevant to your brand. When I find something, I draft engagement posts in your voice for approval. Nothing publishes without your sign-off.
+I monitor AI/tech sources and draft Twitter/X posts in your voice. Nothing publishes without your sign-off.
 
 **What I can do:**
-- Scan configured sources on a schedule or on demand
-- Surface relevant content based on your keywords and interests
-- Draft Twitter/X posts using your voice and templates
+- Scan Twitter lists, RSS feeds, and web pages on schedule
+- Surface relevant content and draft engagement posts
+- Present drafts for your approval (never auto-publish)
 
-**Commands:** `status`, `scan`, `sources`, `config`
+**Commands:**
+- `status` — current config, sources, pending drafts
+- `scan` — trigger a scan now
+- `sources` — list configured sources
+- `config` — view/modify settings
 
 **Setup needed:**
-Show only items whose health check failed. If all checks pass, show: "Ready to scan."
-
-- Twitter auth not configured → run `make auth-xurl` on the host
-- Sources not configured → send `config` to set up feeds and keywords
+[List only the items whose health check failed. If all pass, replace this section with: "Ready to scan."]
+- Twitter: not authenticated. Run `make auth-xurl` on the host, then `make restart`.
+- Sources: no sources configured. Send `config` to add feeds.
 
 ## Returning Boot
 
-When `config.json` is present and valid.
+Use this output when `config.json` exists and is not empty.
 
-Post a single status line to Discord:
+Post to Discord:
 
-```
-Scouter online. Twitter: list <list_id> (auth OK|MISSING). Sources: N RSS, N Web. Heartbeat: active (<interval>)|disabled. Pending: N opportunities.
-```
+Scouter online. Twitter: list <list_id> (auth OK|MISSING). Sources: N RSS, N Web. Heartbeat: <status>. Pending: N opportunities.
 
-If any health check failed, append warnings below the status line.
+If any health check failed, append warnings below the status line. One line per warning.
 
 ## Notes
 
-- Bearer Token auth (xurl) only works with **public** X lists. If a list returns "not found" at scan time, the list is likely private. Do not flag this during boot since boot does not fetch the list. Only flag it if a scan fails with this error.
+Bearer Token auth (xurl) only works with **public** X lists. If a list returns "not found" at scan time, the list is likely private. Do not flag this during boot since boot does not fetch the list.
