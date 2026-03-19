@@ -1,29 +1,32 @@
 # Boot
 
-Run a status check and report to Discord.
+Run a status check and report to Discord. Keep the output short. The user wants a quick glance, not a diagnostic dump.
 
 1. Read `config.json`. If missing or empty, this is a **first boot**.
-2. Run health checks (all checks run regardless of boot type).
+2. Run health checks with dependency chain (see below).
 3. If first boot, use "First Boot" output.
 4. If returning boot, use "Returning Boot" output.
 
 ## Health Checks
 
-Run these in order. Record pass/fail for each.
+Run in order. If a check fails, **skip all checks that depend on it**.
 
 1. `config.json` present and not empty.
-2. GWS skill available: run `npx skills list | grep googleworkspace`.
-3. GWS credentials: check if `~/.config/gws/credentials.json` exists.
-4. Heartbeat: run `openclaw config get agents.list`, parse the JSON array to find the entry matching this agent's `id`, then read `.heartbeat.every`. A value of `"0m"` or absent means disabled.
-5. Briefing config: read `briefing.enabled` and `briefing.cron` from `config.json`.
+2. GWS credentials: check if `~/.config/gws/credentials.json` exists.
+   - If this fails, skip checks 3 and 4 (they require GWS auth).
+3. Unread email count: `gws gmail users messages list --params '{"userId":"me","q":"is:unread","maxResults":100}'` — count results.
+4. Today's event count: `gws calendar events list` for today — count results.
+5. Heartbeat: run `openclaw config get agents.list`, find this agent by `id`, read `.heartbeat.every`. Value `"0m"` or absent = disabled.
+6. Briefing config: read `briefing.enabled` and `briefing.cron` from `config.json`.
 
-If a health check command itself fails (timeout, crash), report it as failed with the error output. Do not silently skip it.
+**Output rules:**
+- Never include raw command output, error messages, or stack traces in the Discord message.
+- If a check fails, report it in one short phrase (e.g. "GWS: not configured").
+- If a check was skipped because its parent failed, do not mention it at all.
 
 ## First Boot
 
-Use this output when `config.json` is missing or empty.
-
-Post to Discord:
+Use when `config.json` is missing or empty. Post to Discord:
 
 **Alfred online.** Your personal assistant.
 
@@ -43,20 +46,23 @@ I keep an eye on your Google Workspace so you don't have to: email, calendar, an
 - `config` — view/modify settings
 
 **Setup needed:**
-[List only the items whose health check failed. If all pass, replace this section with: "Ready. Next briefing at <time>."]
-- Google Workspace: not authenticated. Run `make auth-gws` on the host, then `make restart`.
-- Briefing: not scheduled. Send me a message with your preferred time (e.g. "briefing at 8:00") and I'll set it up.
+[Only list items whose check failed. Omit this section entirely if all pass — end with "Ready. Next briefing at <time>." instead.]
+- Google Workspace: not configured. Run `make auth-gws` on the host, then `make restart`.
+- Briefing: not scheduled. Send me your preferred time (e.g. "briefing at 8:00").
 
 ## Returning Boot
 
-Use this output when `config.json` exists and is not empty.
+Use when `config.json` exists and is not empty. Post to Discord:
 
-Post to Discord:
+**One line only.** Include only the fields you could actually check. Omit fields whose checks were skipped.
 
-Alfred online. GWS: OK. Briefing: daily at <time>. Unread: N emails. Today: N events.
+Examples:
+- All OK: `Alfred online. Briefing: daily at 08:00. Unread: 5. Today: 3 events.`
+- GWS missing: `Alfred online. GWS: not configured. Run `make auth-gws` on the host, then `make restart`.`
+- GWS OK but no briefing: `Alfred online. Unread: 5. Today: 3 events. Briefing: not scheduled.`
 
-If any health check failed, append warnings below the status line. One line per warning.
+Do not add extra warning lines. Everything fits in the status line.
 
 ## Notes
 
-SOUL.md contains interactive onboarding (asks user for briefing time on first interactive message). This BOOT.md does not replace that. BOOT.md informs the user that briefing can be configured; SOUL.md handles the interactive setup when the user responds.
+SOUL.md contains interactive onboarding (asks user for briefing time on first message). This BOOT.md does not replace that.

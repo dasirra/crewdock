@@ -1,31 +1,33 @@
 # Boot
 
-Run a status check and report to Discord.
+Run a status check and report to Discord. Keep the output short. The user wants a quick glance, not a diagnostic dump.
 
 1. Read `config.json`. If missing or empty, this is a **first boot**.
-2. Run health checks (all checks run regardless of boot type).
+2. Run health checks with dependency chain (see below).
 3. If first boot, use "First Boot" output.
 4. If returning boot, use "Returning Boot" output.
 
 ## Health Checks
 
-Run these in order. Record pass/fail for each.
+Run in order. If a check fails, **skip all checks that depend on it**.
 
 1. `config.json` present and not empty.
-2. `forge-db.sh init` (idempotent, ensures DB and migrations are up to date).
-3. `gh auth status` — check GitHub CLI authentication. Credentials stored in `~/.config/gh/hosts.yml`.
-4. `command -v claude` — check Claude CLI is installed (installed by `init.d/01-tools.sh`).
-5. Heartbeat: run `openclaw config get agents.list`, parse the JSON array to find the entry matching this agent's `id`, then read `.heartbeat.every`. A value of `"0m"` or absent means disabled.
-6. Enabled project count: read `config.json`, count projects where `enabled` is `true`.
-7. Active sessions: run `sessions_list`, count sessions with names matching `autopilot-*`.
+2. `forge-db.sh init` (idempotent).
+3. `gh auth status` — GitHub CLI authentication. Credentials in `~/.config/gh/hosts.yml`.
+   - If this fails, skip check 6 (repo scanning requires GitHub auth).
+4. `command -v claude` — Claude CLI installed (by `init.d/01-tools.sh`).
+5. Heartbeat: run `openclaw config get agents.list`, find this agent by `id`, read `.heartbeat.every`. Value `"0m"` or absent = disabled.
+6. Enabled project count: from `config.json`, count projects where `enabled` is `true`.
+7. Active sessions: run `sessions_list`, count names matching `autopilot-*`.
 
-If a health check command itself fails (timeout, crash), report it as failed with the error output. Do not silently skip it.
+**Output rules:**
+- Never include raw command output, error messages, or stack traces in the Discord message.
+- If a check fails, report it in one short phrase (e.g. "GitHub: not authenticated").
+- If a check was skipped because its parent failed, do not mention it at all.
 
 ## First Boot
 
-Use this output when `config.json` is missing or empty.
-
-Post to Discord:
+Use when `config.json` is missing or empty. Post to Discord:
 
 **Forge online.** Autonomous dev orchestrator.
 
@@ -45,17 +47,20 @@ I monitor GitHub repos, pick up open issues, and ship PRs.
 - `pause/resume <owner/repo>` — toggle a repo
 
 **Setup needed:**
-[List only the items whose health check failed. If all pass, replace this section with: "Ready. Monitoring N repos."]
+[Only list items whose check failed. Omit this section entirely if all pass — end with "Ready. Monitoring N repos." instead.]
 - GitHub: not authenticated. Set `GH_TOKEN` in `.env` on the host, then `make restart`.
 - Claude CLI: not installed. Run `make restart` to re-trigger tool installation.
 - Projects: none configured. Send `add owner/repo` to start.
 
 ## Returning Boot
 
-Use this output when `config.json` exists and is not empty.
+Use when `config.json` exists and is not empty. Post to Discord:
 
-Post to Discord:
+**One line only.** Include only the fields you could actually check. Omit fields whose checks were skipped.
 
-Forge online. Repos: N monitored. Sessions: N/M active. Heartbeat: <status>. Queue: N issues pending.
+Examples:
+- All OK: `Forge online. Repos: 3 monitored. Sessions: 1/4 active. Heartbeat: 15m. Queue: 2 pending.`
+- GitHub missing: `Forge online. GitHub: not authenticated. Set `GH_TOKEN` in `.env`, then `make restart`.`
+- Claude missing: `Forge online. Repos: 3. Claude CLI: not installed. Run `make restart`.`
 
-If any health check failed, append warnings below the status line. One line per warning.
+Do not add extra warning lines. Everything fits in the status line.
