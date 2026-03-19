@@ -10,7 +10,7 @@ setup:             ## First-time setup: check Docker, create dirs, copy example 
 	@docker info >/dev/null 2>&1 || { echo "ERROR: Docker daemon is not running."; exit 1; }
 	@docker compose version >/dev/null 2>&1 || { echo "ERROR: docker compose is not available."; exit 1; }
 	@echo "Docker OK."
-	@mkdir -p home/.openclaw/workspace home/.claude home/.config/gh home/.config/gws projects
+	@mkdir -p home/.openclaw/workspace home/.claude home/.config/gh home/.config/gws
 	@touch home/.xurl
 	@echo "Runtime directories created."
 	@# Copy example files (skip if target already exists)

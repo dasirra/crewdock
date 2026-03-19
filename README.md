@@ -163,9 +163,9 @@ openclaw/
 │   └── forge/                   # Forge agent definition
 ├── home/                        # Persistent /home/node volume (gitignored)
 │   ├── .openclaw/               # OpenClaw gateway config + workspace
+│   │   └── workspace/agents/forge/projects/  # Cloned repos
 │   ├── .claude/                 # Claude CLI config
 │   └── .config/                 # gh, gws credentials
-├── projects/                    # Cloned repos for Forge (gitignored)
 ├── docker-compose.yaml          # Core services
 ├── docker-compose.override.yaml # Personal additions (gitignored)
 ├── Dockerfile                   # Base image + core tools

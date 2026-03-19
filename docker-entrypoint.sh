@@ -3,7 +3,7 @@ set -euo pipefail
 
 # If running as root, fix permissions and re-exec as node
 if [ "$(id -u)" = "0" ]; then
-    chown -R node:node /home/node /home/node/projects
+    chown -R node:node /home/node
     exec gosu node "$0" "$@"
 fi
 

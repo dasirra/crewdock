@@ -4,11 +4,11 @@ credentials.json
 
 # Runtime data (created by make setup)
 home/
-projects/
 
 # Legacy dirs (pre-restructure)
 config/
 workspace/
+projects/
 claude-config/
 gws-config/
 syncthing-config/

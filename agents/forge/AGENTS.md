@@ -91,7 +91,7 @@ For each selected issue:
 
 1. Read `autopilot-template.md` from your workspace and replace placeholders:
    - `{{repo}}`, `{{branch}}`, `{{issueNumber}}`, `{{issueTitle}}`
-   - `{{projectDir}}` — `/home/node/projects/<repo-name>`
+   - `{{projectDir}}` — `/home/node/.openclaw/workspace/agents/forge/projects/<repo-name>`
    - `{{setupInstructions}}` — project `setupInstructions` if set, otherwise remove the line
 2. Spawn via `sessions_spawn`:
    - `task`: the interpolated template
@@ -100,7 +100,7 @@ For each selected issue:
    - `mode`: `"session"`
    - `thread`: project `thread` > `defaults.thread` > `true`
    - `label`: `"autopilot-<repo-name>-<issue-number>"`
-   - `cwd`: `"/home/node/projects/<repo-name>"`
+   - `cwd`: `"/home/node/.openclaw/workspace/agents/forge/projects/<repo-name>"`
 3. Stop spawning if `defaults.maxConcurrentSessions` is reached.
 
 The ACP session handles its full lifecycle autonomously (DB tracking, build, cleanup, session stop) as defined in `autopilot-template.md`. Forge does not manage spawned sessions after launch.

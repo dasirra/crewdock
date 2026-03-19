@@ -53,7 +53,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && chmod +x /usr/local/lib/openclaw-init.d/*.sh
 
 # Ensure home is owned by node + compile cache for low-power hosts
-RUN mkdir -p /home/node/projects /var/tmp/openclaw-compile-cache \
+RUN mkdir -p /var/tmp/openclaw-compile-cache \
     && chown -R node:node /home/node /var/tmp/openclaw-compile-cache
 
 ENV PATH="/home/node/.local/bin:${PATH}"
