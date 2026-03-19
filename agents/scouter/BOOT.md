@@ -1,27 +1,55 @@
 # Boot
 
-Run a status check and report to Discord.
+Read `config.json` to determine boot type. If the file is missing or empty, run **First Boot**. If present and valid, run **Returning Boot**.
 
-1. Read `config.json`. If missing or empty, reply "Scouter config not found. Send `status` to set up." and stop.
-2. Run `scouter-db.sh init` (idempotent, ensures DB and migrations are up to date).
-3. Check xurl auth: run `xurl auth status`. If bearer token is missing, note it.
-4. Check heartbeat: run `openclaw config get agents` and check if this agent's `heartbeat.every` is set and not `"0m"`.
-5. Collect status:
-   - Heartbeat active or disabled
-   - Twitter list ID from config (and whether xurl auth is ready)
-   - RSS/Web sources count
-   - Last scan timestamps via `scouter-db.sh last-scan`
-   - Pending opportunities count via `scouter-db.sh pending`
-6. Post a brief status report to Discord:
+Run all health checks regardless of boot type. Collect results before producing output.
+
+## Health Checks
+
+Run these in order. If any check command fails, report it as failed with the error output. Do not skip checks.
+
+1. **Config**: `config.json` present and not empty.
+2. **Database**: `scouter-db.sh init` (idempotent, ensures DB and migrations are current).
+3. **Twitter auth**: `xurl auth status`. Record whether bearer token is present.
+4. **Heartbeat**: `openclaw config get agents.list`, find this agent's entry, read `.heartbeat.every`. Value `"0m"` or absent means disabled.
+5. **Source counts**: count Twitter list, RSS, and Web sources from config.
+6. **Scan state**: `scouter-db.sh last-scan` and `scouter-db.sh pending`.
+
+## First Boot
+
+When `config.json` is missing or empty.
+
+Post to Discord:
+
+**Scouter online.** Intelligence radar and brand ghostwriter.
+
+I monitor Twitter/X lists, RSS feeds, and web sources for AI/tech content relevant to your brand. When I find something, I draft engagement posts in your voice for approval. Nothing publishes without your sign-off.
+
+**What I can do:**
+- Scan configured sources on a schedule or on demand
+- Surface relevant content based on your keywords and interests
+- Draft Twitter/X posts using your voice and templates
+
+**Commands:** `status`, `scan`, `sources`, `config`
+
+**Setup needed:**
+Show only items whose health check failed. If all checks pass, show: "Ready to scan."
+
+- Twitter auth not configured → run `make auth-xurl` on the host
+- Sources not configured → send `config` to set up feeds and keywords
+
+## Returning Boot
+
+When `config.json` is present and valid.
+
+Post a single status line to Discord:
 
 ```
-Scouter online.
-
-Heartbeat: active (twice-daily) | DISABLED
-Twitter: list <list_id> (auth: OK|MISSING)
-Sources: N RSS, N Web
-Last scan: <timestamp> | Pending: N opportunities
+Scouter online. Twitter: list <list_id> (auth OK|MISSING). Sources: N RSS, N Web. Heartbeat: active (<interval>)|disabled. Pending: N opportunities.
 ```
 
-Issues to flag:
-- If xurl auth is OK but the list returns "not found" at scan time: Bearer Token auth only works with **public** lists. If the list is private, tell the user to make it public on X. Do not assume the ID is wrong.
+If any health check failed, append warnings below the status line.
+
+## Notes
+
+- Bearer Token auth (xurl) only works with **public** X lists. If a list returns "not found" at scan time, the list is likely private. Do not flag this during boot since boot does not fetch the list. Only flag it if a scan fails with this error.
