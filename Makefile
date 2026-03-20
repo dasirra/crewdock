@@ -1,45 +1,12 @@
-.PHONY: setup up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth-anthropic auth-codex auth-gws auth-xurl update clean help
+.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth-anthropic auth-codex update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
 
-# --- Setup ---
-
-setup:             ## First-time setup: check Docker, create dirs, copy example files, build and start
-	@command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is not installed."; exit 1; }
-	@docker info >/dev/null 2>&1 || { echo "ERROR: Docker daemon is not running."; exit 1; }
-	@docker compose version >/dev/null 2>&1 || { echo "ERROR: docker compose is not available."; exit 1; }
-	@echo "Docker OK."
-	@mkdir -p home/.openclaw/workspace home/.claude home/.config/gh home/.config/gws
-	@touch home/.xurl
-	@echo "Runtime directories created."
-	@# Copy example files (skip if target already exists)
-	@for pair in \
-	  ".env.example:.env" \
-	  "docker-compose.override.example.yaml:docker-compose.override.yaml" \
-	  "Dockerfile.local.example:Dockerfile.local"; do \
-	  src=$${pair%%:*}; dst=$${pair##*:}; \
-	  if [ ! -f "$$src" ]; then continue; fi; \
-	  if [ -f "$$dst" ]; then \
-	    echo "  $$dst already exists, skipping."; \
-	  else \
-	    cp "$$src" "$$dst"; \
-	    echo "  $$dst created from $$src"; \
-	  fi; \
-	done
-	@# Install GWS credentials if provided
-	@if [ -f "credentials.json" ] && [ ! -f "home/.config/gws/credentials.json" ]; then \
-		cp credentials.json home/.config/gws/credentials.json; \
-		echo "  GWS credentials installed to home/.config/gws/"; \
-	elif [ ! -f "home/.config/gws/credentials.json" ]; then \
-		echo "  (optional) For Google Workspace: place credentials.json in project root and re-run make setup"; \
-	fi
-	@echo ""
-	@echo "Edit .env with your tokens, then run: make up"
-
 # --- Daily operations ---
 
 up:                ## Build and start all services (pulls base image if version changed)
+	@[ -f .env ] || { echo "No .env found. Run ./install.sh first (or copy .env.example manually)."; exit 1; }
 	@mkdir -p home/.openclaw/workspace home/.claude home/.config/gh home/.config/gws projects
 	@[ -f home/.xurl ] || touch home/.xurl
 	@IMAGE_ID=$$(docker images -q ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION) 2>/dev/null); \
@@ -122,20 +89,6 @@ auth-anthropic:    ## Set up Anthropic OAuth (interactive paste-token)
 	@echo ""
 	@read -p "  Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || { echo "Aborted."; exit 1; }
 	docker compose exec openclaw-gateway node dist/index.js models auth paste-token --provider anthropic
-
-auth-gws:          ## Set up Google Workspace credentials by pasting JSON
-	@echo ""
-	@echo "  Paste your GWS credentials JSON below, then press Enter and Ctrl+D:"
-	@echo ""
-	@mkdir -p home/.config/gws
-	@chmod 755 home/.config/gws
-	@cat > home/.config/gws/credentials.json
-	@chmod 644 home/.config/gws/credentials.json
-	@echo ""
-	@echo "  Credentials saved to home/.config/gws/credentials.json"
-
-auth-xurl:         ## Set up X/Twitter API auth interactively
-	docker compose exec openclaw-gateway xurl auth
 
 auth-codex:        ## Set up OpenAI Codex OAuth
 	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
