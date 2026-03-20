@@ -124,7 +124,8 @@ check_deps() {
 #   OPENCLAW_GATEWAY_TOKEN
 # ---------------------------------------------------------------------------
 
-_ENV_FILE="${SCRIPT_DIR:-.}/.env"
+# SCRIPT_DIR must be set before sourcing lib.sh; unset will fail loudly under set -u.
+_ENV_FILE="${SCRIPT_DIR}/.env"
 
 # env_get KEY — reads value from .env, returns empty if not found
 env_get() {
@@ -166,7 +167,7 @@ env_set() {
   # Escape special characters in value for sed
   # We'll write as KEY=value (no quotes unless needed)
   local escaped_value
-  escaped_value=$(printf '%s\n' "$value" | sed 's/[[\.*^$()+?{|]/\\&/g')
+  escaped_value=$(printf '%s\n' "$value" | sed 's/[[\.*^$()+?{|&]/\\&/g')
 
   if grep -qE "^${key}=" "$_ENV_FILE" 2>/dev/null; then
     # Update existing line

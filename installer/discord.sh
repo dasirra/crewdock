@@ -81,13 +81,16 @@ run_discord_agent() {
 
     # Validate token
     print_info "Validating token..."
-    local response http_code
-    response=$(curl -sf -w "\n%{http_code}" \
+    local http_code body_file
+    body_file=$(mktemp)
+    http_code=$(curl -sf \
       -H "Authorization: Bot $token" \
-      "https://discord.com/api/v10/users/@me" 2>/dev/null || echo -e "\n000")
-    http_code=$(echo "$response" | tail -1)
+      -o "$body_file" \
+      -w "%{http_code}" \
+      "https://discord.com/api/v10/users/@me" 2>/dev/null || echo "000")
     local body
-    body=$(echo "$response" | head -n -1)
+    body=$(cat "$body_file" 2>/dev/null || echo "")
+    rm -f "$body_file"
 
     if [ "$http_code" = "200" ]; then
       bot_username=$(echo "$body" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('username',''))" 2>/dev/null || \
@@ -132,28 +135,42 @@ run_discord_agent() {
   fi
 
   if [ -n "$channel_id" ]; then
-    # Validate channel
-    print_info "Validating channel access..."
-    local ch_response ch_code
-    ch_response=$(curl -sf -w "\n%{http_code}" \
-      -H "Authorization: Bot $token" \
-      "https://discord.com/api/v10/channels/$channel_id" 2>/dev/null || echo -e "\n000")
-    ch_code=$(echo "$ch_response" | tail -1)
+    # Validate channel (with retry loop)
+    local ch_validated=0
+    while true; do
+      print_info "Validating channel access..."
+      local ch_code ch_body_file
+      ch_body_file=$(mktemp)
+      ch_code=$(curl -sf \
+        -H "Authorization: Bot $token" \
+        -o "$ch_body_file" \
+        -w "%{http_code}" \
+        "https://discord.com/api/v10/channels/$channel_id" 2>/dev/null || echo "000")
+      rm -f "$ch_body_file"
 
-    if [ "$ch_code" = "200" ]; then
-      print_success "Channel access confirmed."
-      if [ "$token_status" = "validated" ]; then
-        DISCORD_SETUP_STATUS="validated"
+      if [ "$ch_code" = "200" ]; then
+        print_success "Channel access confirmed."
+        ch_validated=1
+        break
       else
-        DISCORD_SETUP_STATUS="unverified"
+        print_warn "Could not verify channel access (HTTP $ch_code)"
+        local ch_choice
+        ch_choice=$(printf 'Retry\nSave anyway\nSkip channel' | gum choose --header "What would you like to do?")
+        case "$ch_choice" in
+          "Retry")
+            channel_id=$(gum_input "Channel ID" "Right-click channel > Copy Channel ID")
+            [ -z "$channel_id" ] && channel_id="$existing_channel"
+            continue
+            ;;
+          "Save anyway") break ;;
+          "Skip channel") channel_id="$existing_channel"; break ;;
+        esac
       fi
+    done
+
+    if [ "$ch_validated" -eq 1 ] && [ "$token_status" = "validated" ]; then
+      DISCORD_SETUP_STATUS="validated"
     else
-      print_warn "Could not verify channel access (HTTP $ch_code)"
-      local ch_choice
-      ch_choice=$(printf 'Save anyway\nSkip channel' | gum choose --header "What would you like to do?")
-      case "$ch_choice" in
-        "Skip channel") channel_id="$existing_channel" ;;
-      esac
       DISCORD_SETUP_STATUS="unverified"
     fi
   fi

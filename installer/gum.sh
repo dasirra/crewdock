@@ -100,9 +100,18 @@ gum_install() {
       ;;
   esac
 
-  local version="0.14.5"
+  # Query latest release from GitHub API
+  local version
+  version=$(curl -sf "https://api.github.com/repos/charmbracelet/gum/releases/latest" 2>/dev/null | \
+    grep -o '"tag_name":"[^"]*"' | cut -d'"' -f4 | tr -d 'v' || echo "")
+  if [ -z "$version" ]; then
+    # Fallback version if API is unreachable
+    version="0.14.5"
+    echo "Could not fetch latest version, trying $version..."
+  fi
+
   local os_cap
-  os_cap=$(echo "$os" | sed 's/./\u&/') 2>/dev/null || os_cap=$(echo "$os" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
+  os_cap=$(echo "$os" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
 
   download_url="https://github.com/charmbracelet/gum/releases/download/v${version}/gum_${version}_${os_cap}_${arch}.tar.gz"
 

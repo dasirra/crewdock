@@ -22,30 +22,37 @@ run_claude() {
   local existing_token
   existing_token=$(env_get "CLAUDE_CODE_OAUTH_TOKEN")
 
-  local token
-
   if [ -n "$existing_token" ]; then
     print_info "Current token: $(mask_token "$existing_token")"
-    token=$(gum_input_password "Claude OAuth token (Enter to keep current)")
-    if [ -z "$token" ]; then
-      token="$existing_token"
+    local new_token
+    new_token=$(gum_input_password "Claude OAuth token (Enter to keep current)")
+    if [ -z "$new_token" ]; then
       CLAUDE_SETUP_STATUS="unverified"
       print_info "Keeping existing token."
       return 0
     fi
-  else
-    token=$(gum_input_password "Claude OAuth token")
+    env_set "CLAUDE_CODE_OAUTH_TOKEN" "$new_token"
+    CLAUDE_SETUP_STATUS="unverified"
+    print_success "Claude token saved (will be verified on container boot)."
+    return 0
   fi
 
-  if [ -z "$token" ]; then
+  local token
+  while true; do
+    token=$(gum_input_password "Claude OAuth token")
+
+    if [ -n "$token" ]; then
+      break
+    fi
+
     print_warn "No token provided."
     local choice
-    choice=$(printf 'Skip\nRetry' | gum choose --header "What would you like to do?")
+    choice=$(printf 'Retry\nSkip' | gum choose --header "What would you like to do?")
     case "$choice" in
       "Skip") CLAUDE_SETUP_STATUS="skipped"; return 0 ;;
-      "Retry") run_claude; return $? ;;
+      "Retry") continue ;;
     esac
-  fi
+  done
 
   env_set "CLAUDE_CODE_OAUTH_TOKEN" "$token"
   # Not validated on host — verified on container boot

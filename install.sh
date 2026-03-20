@@ -121,12 +121,12 @@ echo ""
 EXISTING_NAME=$(env_get "GIT_AUTHOR_NAME")
 EXISTING_EMAIL=$(env_get "GIT_AUTHOR_EMAIL")
 
-GIT_NAME=$(gum input "Full name" "${EXISTING_NAME:-Your Name}")
+GIT_NAME=$(gum_input "Full name" "${EXISTING_NAME:-Your Name}")
 if [ -z "$GIT_NAME" ] && [ -n "$EXISTING_NAME" ]; then
   GIT_NAME="$EXISTING_NAME"
 fi
 
-GIT_EMAIL=$(gum input "Email address" "${EXISTING_EMAIL:-you@example.com}")
+GIT_EMAIL=$(gum_input "Email address" "${EXISTING_EMAIL:-you@example.com}")
 if [ -z "$GIT_EMAIL" ] && [ -n "$EXISTING_EMAIL" ]; then
   GIT_EMAIL="$EXISTING_EMAIL"
 fi
@@ -361,7 +361,7 @@ echo ""
 
 if gum_confirm "Start OpenClaw now? (make up)"; then
   print_info "Running make up..."
-  make up
+  make -C "$SCRIPT_DIR" up
 else
   print_info "Run 'make up' when ready to start."
 fi
