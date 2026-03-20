@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# install.sh — OpenClaw NAS interactive TUI installation wizard
-# Entry point: git clone ... && cd openclaw-nas && ./install.sh
+# install.sh — CrewDock interactive TUI installation wizard
+# Entry point: git clone ... && cd crewdock && ./install.sh
 # Power user alternative: cp .env.example .env && vim .env && make up
 
 set -euo pipefail

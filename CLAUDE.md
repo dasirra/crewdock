@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-OpenClaw NAS — a self-hosted AI assistant running 24/7 on a NAS via Docker, built on [OpenClaw](https://github.com/openclaw/openclaw). For upstream docs, APIs, and troubleshooting, check the [documentation](https://docs.openclaw.ai/start/getting-started). When debugging issues, consult these resources for possible solutions before assuming the problem is local.
+CrewDock — a self-hosted AI crew running 24/7 on your server via Docker, built on [OpenClaw](https://github.com/openclaw/openclaw). For upstream docs, APIs, and troubleshooting, check the [documentation](https://docs.openclaw.ai/start/getting-started). When debugging issues, consult these resources for possible solutions before assuming the problem is local.
 
 Two main components:
 
@@ -14,11 +14,12 @@ Two main components:
 ## Commands
 
 ```bash
-make init               # First-time: creates runtime directories (run before first 'make up')
+./install.sh            # TUI installation wizard (first-time setup or reconfigure)
 make up                 # Build and start services
 make down               # Stop services
 make restart            # Restart all; make restart-gateway for just gateway
 make logs               # Tail gateway logs; make logs-all for all services
+make auth               # Authenticate an LLM provider (interactive selector)
 make shell              # Bash into the gateway container
 make update             # Pull latest image, rebuild, restart
 make config-preview     # Preview generated openclaw.json (no Docker needed)
@@ -27,11 +28,13 @@ make config-preview     # Preview generated openclaw.json (no Docker needed)
 ## Project Structure
 
 ```
-agents/forge/           # Forge agent definition (tracked in git, copied to workspace on setup)
+install.sh              # TUI installation wizard (entry point for new users)
+installer/              # Wizard modules (manifest, integration setup scripts, TUI helpers)
+agents/                 # Agent templates (tracked in git, copied to workspace on first boot)
 home/                   # Persistent /home/node volume — all runtime config and data (gitignored)
 ```
 
-Only `agents/`, `docker-compose.yaml`, `Dockerfile`, `docker-entrypoint.sh`, `init.d/`, `Makefile`, and `docs/` are tracked in git. Everything under `home/` is gitignored runtime data.
+Only `install.sh`, `installer/`, `agents/`, `docker-compose.yaml`, `Dockerfile`, `docker-entrypoint.sh`, `init.d/`, `Makefile`, and `docs/` are tracked in git. Everything under `home/` is gitignored runtime data.
 
 ## Forge Architecture
 

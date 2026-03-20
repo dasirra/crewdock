@@ -161,127 +161,90 @@ original takes, quote tweets, replies, resource shares, and threads.
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- A [Discord bot token](https://discord.com/developers/applications) per agent (Forge, Alfred, Scouter) + a Discord server
-- A [Claude Code OAuth token](https://claude.ai/code) — for Forge coding sessions
-- A [GitHub personal access token](https://github.com/settings/tokens) with `repo` scope — for Forge PRs and `gh` CLI
-- Google Workspace credentials (optional) — for Alfred. Set up via `make auth-gws`.
+- [Docker](https://www.docker.com/) and Docker Compose
+- `curl` and `jq` (used by the install wizard)
+
+The install wizard walks you through everything else: Discord bots, GitHub
+tokens, Claude credentials, and optional integrations. It validates each
+credential before saving.
 
 ## Installation
-
-### 1. Clone and setup
 
 ```bash
 git clone https://github.com/dasirra/crewdock.git
 cd crewdock
-make setup
+./install.sh
 ```
 
-This creates `.env`, runtime directories, and local config files from their examples.
+The wizard will:
 
-### 2. Configure Discord and API keys
+1. Install [gum](https://github.com/charmbracelet/gum) (TUI framework) if not present
+2. Let you pick which agents to enable
+3. Walk you through each integration (Discord, GitHub, Claude, Google Workspace, X/Twitter)
+4. Validate credentials against their APIs in real time
+5. Generate your `.env` and create runtime directories
+6. Offer to start the container (`make up`) and authenticate an LLM provider (`make auth`)
+
+**Power user alternative:** skip the wizard entirely.
 
 ```bash
-nano .env
-```
-
-Fill in your Discord bot tokens, `CLAUDE_CODE_OAUTH_TOKEN`, and `GH_TOKEN`.
-
-### 3. Build and start
-
-```bash
+cp .env.example .env
+vim .env        # fill in your values
 make up
+make auth       # authenticate an LLM provider
 ```
 
-### 4. Authenticate your LLM provider
+### Reconfiguring
 
-With the gateway running, authenticate the model provider for the agents:
-
-```bash
-make auth-anthropic   # Anthropic OAuth
-make auth-codex       # OpenAI Codex OAuth
-```
-
-That's it. Agents are ready to use via Discord. Each one can be configured
-through conversation — just message it.
+Run `./install.sh` again at any time to add agents, change tokens, or update
+integrations. The wizard detects your existing `.env` and lets you modify it.
 
 ## Configuration
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` (done by `make setup`) and fill in your values.
-
-**Required:**
-
-| Variable | Description |
-|---|---|
-| `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code OAuth token (Forge sessions + LLM provider auth) |
-| `GH_TOKEN` | GitHub PAT with `repo` scope minimum |
-
-**Git identity (for agent commits):**
-
-| Variable | Default | Description |
-|---|---|---|
-| `GIT_AUTHOR_NAME` | `Claude Dev` | Commit author name |
-| `GIT_AUTHOR_EMAIL` | `claude-dev@localhost` | Commit author email |
-
-**Discord (one bot per agent):**
-
-| Variable | Description |
-|---|---|
-| `DISCORD_FORGE_TOKEN` | Bot token for Forge |
-| `DISCORD_FORGE_CHANNEL` | Channel ID for Forge |
-| `DISCORD_SCOUTER_TOKEN` | Bot token for Scouter |
-| `DISCORD_SCOUTER_CHANNEL` | Channel ID for Scouter |
-| `DISCORD_ALFRED_TOKEN` | Bot token for Alfred |
-| `DISCORD_ALFRED_CHANNEL` | Channel ID for Alfred |
-| `DISCORD_GUILD` | Server (guild) ID — required if any agent token is set |
-
-**X/Twitter API (optional, for Scouter):**
-
-| Variable | Description |
-|---|---|
-| `X_BEARER_TOKEN` | Bearer token for read-only X API v2 access |
-| `X_CLIENT_ID` | Client ID (only for OAuth 2.0 user-context auth) |
-| `X_CLIENT_SECRET` | Client secret (only for OAuth 2.0 user-context auth) |
-
-**Auto-managed:**
-
-| Variable | Description |
-|---|---|
-| `OPENCLAW_GATEWAY_TOKEN` | Gateway auth token (generated on first boot if not set) |
+The install wizard generates `.env` for you. For manual setup, copy
+`.env.example` to `.env` and fill in your values. See `.env.example` for the
+full list of available variables and their descriptions.
 
 ## Commands
 
 | Command | Description |
 |---|---|
-| `make setup` | First-time setup: create dirs, copy example files |
 | `make up` | Build and start all services |
-| `make up-debug` | Build and start in foreground (no daemon) |
 | `make down` | Stop all services |
 | `make restart` | Restart all services |
 | `make restart-gateway` | Restart only the gateway |
 | `make logs` | Tail gateway logs |
 | `make logs-all` | Tail all service logs |
 | `make status` | Show running containers |
+| `make auth` | Authenticate an LLM provider (interactive selector) |
+| `make auth-anthropic` | Authenticate Anthropic OAuth |
+| `make auth-codex` | Authenticate OpenAI Codex OAuth |
 | `make version` | Show pinned, running, and latest versions |
+| `make update` | Check for new OpenClaw version, rebuild if newer |
 | `make shell` | Open bash shell in the gateway container |
 | `make cli` | Open interactive OpenClaw CLI |
 | `make dashboard` | Auto-approve pending devices, print dashboard URL |
 | `make onboard` | Run onboarding wizard (LLM + integrations) |
-| `make update` | Check for new OpenClaw version, rebuild if newer |
-| `make clean` | Remove dangling Docker images |
-| `make auth-anthropic` | Authenticate Anthropic OAuth |
-| `make auth-codex` | Authenticate OpenAI Codex OAuth |
-| `make auth-gws` | Set up Google Workspace credentials |
-| `make auth-xurl` | Set up X/Twitter API auth |
 | `make config-preview` | Preview generated openclaw.json without Docker |
+| `make clean` | Remove dangling Docker images |
 | `make help` | Show all available commands |
 
 ## Project Structure
 
 ```
 crewdock/
+├── install.sh                     # TUI installation wizard
+├── installer/                     # Wizard modules
+│   ├── manifest.json              # Agent and integration definitions
+│   ├── lib.sh                     # Shared helpers (output, env, gum wrappers)
+│   ├── gum.sh                     # Gum detection and auto-install
+│   ├── discord.sh                 # Discord bot setup + validation
+│   ├── github.sh                  # GitHub PAT setup + validation
+│   ├── claude.sh                  # Claude OAuth token setup
+│   ├── gws.sh                     # Google Workspace credentials setup
+│   └── xurl.sh                    # X/Twitter API setup + validation
 ├── agents/                        # Agent templates (tracked in git)
 │   ├── overlord/                  # System admin agent
 │   ├── forge/                     # Dev autopilot agent
@@ -300,7 +263,7 @@ crewdock/
 ├── Dockerfile                     # Base image + core tools
 ├── Dockerfile.local               # Personal tool additions (gitignored)
 ├── docker-entrypoint.sh           # Container entrypoint
-├── Makefile                       # Setup, build, and management commands
+├── Makefile                       # Build and management commands
 └── .openclaw-version              # Pinned OpenClaw base image version
 ```
 
