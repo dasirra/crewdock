@@ -26,7 +26,7 @@ curl -sf -X POST \
     -d '{
         "embeds": [{
             "title": "Setup Required",
-            "description": "No LLM provider is authenticated yet. I cannot respond to messages until you configure at least one provider.\n\n**Run one of these on the host:**\n```\nmake auth-codex\nmake auth-anthropic\n```\nThen restart: `make restart`",
+            "description": "No LLM provider is authenticated yet. I cannot respond to messages until you configure at least one provider.\n\n**Run on the host:**\n```\nmake auth\n```",
             "color": 16753920
         }]
     }' >/dev/null 2>&1 && log "Welcome message sent." || log "Failed to send welcome message."

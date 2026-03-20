@@ -8,8 +8,15 @@ DISCORD_SETUP_STATUS="skipped"
 
 # run_discord_shared — collect shared Discord settings (guild ID)
 run_discord_shared() {
-  print_info "Discord Developer Mode must be enabled to copy IDs."
-  print_info "Settings > Advanced > Developer Mode = ON"
+  print_info "Before continuing, make sure you have:"
+  print_info "  1. A Discord server where the bots will operate"
+  print_info "  2. Developer Mode enabled (User Settings > Advanced > Developer Mode = ON)"
+  echo ""
+  if ! gum_confirm "Do you have a Discord server ready with Developer Mode enabled?"; then
+    print_info "Create a Discord server first, enable Developer Mode, then re-run the installer."
+    DISCORD_SETUP_STATUS="skipped"
+    return 0
+  fi
   echo ""
 
   local existing_guild
@@ -46,10 +53,14 @@ run_discord_agent() {
   print_info "  1. Go to: https://discord.com/developers/applications"
   print_info "  2. Click 'New Application', give it a name (e.g. $agent_name)"
   print_info "  3. Go to 'Bot' in the left sidebar"
-  print_info "  4. Click 'Add Bot' (or 'Reset Token' if one exists)"
+  print_info "  4. Click 'Reset Token' to generate a bot token"
   print_info "  5. Copy the token"
-  print_info "  6. Enable 'Message Content Intent' under Privileged Gateway Intents"
-  print_info "  7. Go to 'OAuth2 > URL Generator', select 'bot' scope + 'Send Messages' permission"
+  print_info "  6. Enable these under Privileged Gateway Intents:"
+  print_info "     - Message Content Intent"
+  print_info "  7. Go to 'OAuth2 > URL Generator':"
+  print_info "     - Select 'bot' scope"
+  print_info "     - Enable permissions: Send Messages, Read Message History,"
+  print_info "       Embed Links, Attach Files, Add Reactions, Use Slash Commands"
   print_info "  8. Open the generated URL to invite the bot to your server"
   echo ""
 
@@ -67,8 +78,6 @@ run_discord_agent() {
       token=$(gum_input_password "Bot token (Enter to keep current)")
       if [ -z "$token" ]; then
         token="$existing_token"
-        token_status="unverified"
-        break
       fi
     else
       token=$(gum_input_password "Bot token")
@@ -83,7 +92,7 @@ run_discord_agent() {
     print_info "Validating token..."
     local http_code body_file
     body_file=$(mktemp)
-    http_code=$(curl -sf \
+    http_code=$(curl -s \
       -H "Authorization: Bot $token" \
       -o "$body_file" \
       -w "%{http_code}" \
@@ -120,6 +129,12 @@ run_discord_agent() {
   env_set "DISCORD_${agent_upper}_TOKEN" "$token"
 
   # Collect channel ID
+  echo ""
+  print_info "Each bot needs a dedicated text channel in your server."
+  print_info "Create one (e.g., #${agent_id}-activity) or select an existing channel."
+  print_info "Right-click the channel > Copy Channel ID"
+  echo ""
+
   local existing_channel
   existing_channel=$(env_get "DISCORD_${agent_upper}_CHANNEL")
   local channel_id
@@ -141,7 +156,7 @@ run_discord_agent() {
       print_info "Validating channel access..."
       local ch_code ch_body_file
       ch_body_file=$(mktemp)
-      ch_code=$(curl -sf \
+      ch_code=$(curl -s \
         -H "Authorization: Bot $token" \
         -o "$ch_body_file" \
         -w "%{http_code}" \

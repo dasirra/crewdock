@@ -8,15 +8,19 @@ CLAUDE_SETUP_STATUS="skipped"
 
 # run_claude — collect Claude OAuth token (not validated on host)
 run_claude() {
-  print_info "You need a Claude Code OAuth token."
-  print_info "To obtain one:"
+  print_info "This token powers the dev orchestrator (Forge), which spawns autonomous"
+  print_info "coding sessions. It connects to Claude Code CLI via ACP (Agent Control Protocol)"
+  print_info "running inside the container. This is a standard Claude Code usage pattern"
+  print_info "and does not violate Anthropic's Terms of Service."
   echo ""
-  print_info "  1. Run 'claude' in your terminal (install from https://claude.ai/code if needed)"
-  print_info "  2. Complete the sign-in flow in your browser"
-  print_info "  3. Find your token in: ~/.claude/.credentials.json"
-  print_info "     Look for: { \"claudeAiOauth\": { \"accessToken\": \"sk-ant-oat...\" } }"
+  print_info "To obtain a Claude Code OAuth token:"
   echo ""
-  print_info "Note: This token is verified on container boot, not here."
+  print_info "  1. Install Claude Code if needed (https://claude.ai/code)"
+  print_info "  2. Run: claude setup-token"
+  print_info "  3. Copy the token it outputs"
+  echo ""
+  print_info "Note: This token cannot be validated on the host. It will be verified"
+  print_info "automatically when the container boots."
   echo ""
 
   local existing_token

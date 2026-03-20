@@ -113,27 +113,55 @@ echo ""
 print_success "Selected: $SELECTED_AGENT_IDS"
 echo ""
 
-# --- Screen 3: Git Identity ---
-print_header "Git Identity"
-print_info "Used for commits made by autonomous agents."
-echo ""
+# --- Helper: agents needing a given integration ---
+# agents_for_integration INTEGRATION_KEY — returns "Agent1, Agent2 (optional)" string
+agents_for_integration() {
+  local intg="$1"
+  local result=""
+  for aid in $SELECTED_AGENT_IDS; do
+    local needs
+    needs=$(jq -r --arg id "$aid" --arg intg "$intg" \
+      '.agents[] | select(.id == $id) | .integrations[$intg] // "none"' "$MANIFEST")
+    if [ "$needs" != "none" ]; then
+      local aname
+      aname=$(jq -r --arg id "$aid" '.agents[] | select(.id == $id) | .name' "$MANIFEST")
+      local label=""
+      [ "$needs" = "optional" ] && label=" (optional)"
+      if [ -n "$result" ]; then
+        result="$result, $aname$label"
+      else
+        result="$aname$label"
+      fi
+    fi
+  done
+  echo "$result"
+}
 
-EXISTING_NAME=$(env_get "GIT_AUTHOR_NAME")
-EXISTING_EMAIL=$(env_get "GIT_AUTHOR_EMAIL")
+# --- Screen 3: Git Identity (only for Forge) ---
+case " $SELECTED_AGENT_IDS " in
+  *" forge "*)
+    print_header "Git Identity"
+    print_info "Used for commits made by Forge."
+    echo ""
 
-GIT_NAME=$(gum_input "Full name" "${EXISTING_NAME:-Your Name}")
-if [ -z "$GIT_NAME" ] && [ -n "$EXISTING_NAME" ]; then
-  GIT_NAME="$EXISTING_NAME"
-fi
+    EXISTING_NAME=$(env_get "GIT_AUTHOR_NAME")
+    EXISTING_EMAIL=$(env_get "GIT_AUTHOR_EMAIL")
 
-GIT_EMAIL=$(gum_input "Email address" "${EXISTING_EMAIL:-you@example.com}")
-if [ -z "$GIT_EMAIL" ] && [ -n "$EXISTING_EMAIL" ]; then
-  GIT_EMAIL="$EXISTING_EMAIL"
-fi
+    GIT_NAME=$(gum_input "Full name" "${EXISTING_NAME:-Your Name}")
+    if [ -z "$GIT_NAME" ] && [ -n "$EXISTING_NAME" ]; then
+      GIT_NAME="$EXISTING_NAME"
+    fi
 
-env_set "GIT_AUTHOR_NAME" "$GIT_NAME"
-env_set "GIT_AUTHOR_EMAIL" "$GIT_EMAIL"
-echo ""
+    GIT_EMAIL=$(gum_input "Email address" "${EXISTING_EMAIL:-you@example.com}")
+    if [ -z "$GIT_EMAIL" ] && [ -n "$EXISTING_EMAIL" ]; then
+      GIT_EMAIL="$EXISTING_EMAIL"
+    fi
+
+    env_set "GIT_AUTHOR_NAME" "$GIT_NAME"
+    env_set "GIT_AUTHOR_EMAIL" "$GIT_EMAIL"
+    echo ""
+    ;;
+esac
 
 # --- Compute required and optional integrations ---
 REQUIRED_INTEGRATIONS=""
@@ -201,6 +229,8 @@ source "$SCRIPT_DIR/installer/xurl.sh"
 case " $REQUIRED_INTEGRATIONS $OPTIONAL_INTEGRATIONS " in
   *" discord "*)
     print_header "Discord Setup"
+    print_info "Agents: $(agents_for_integration discord)"
+    echo ""
     run_discord_shared
     for agent_id in $SELECTED_AGENT_IDS; do
       # Check if this agent needs discord
@@ -219,14 +249,18 @@ esac
 case " $REQUIRED_INTEGRATIONS " in
   *" github "*)
     print_header "GitHub Setup"
+    print_info "Agents: $(agents_for_integration github)"
+    echo ""
     run_github
     INTG_STATUS_github="${GITHUB_SETUP_STATUS:-unverified}"
     ;;
   *)
     case " $OPTIONAL_INTEGRATIONS " in
       *" github "*)
-        if gum_confirm "Set up GitHub integration? (optional for selected agents)"; then
+        if gum_confirm "Set up GitHub integration? (optional for $(agents_for_integration github))"; then
           print_header "GitHub Setup"
+          print_info "Agents: $(agents_for_integration github)"
+          echo ""
           run_github
           INTG_STATUS_github="${GITHUB_SETUP_STATUS:-unverified}"
         else
@@ -241,14 +275,18 @@ esac
 case " $REQUIRED_INTEGRATIONS " in
   *" claude "*)
     print_header "Claude Setup"
+    print_info "Agents: $(agents_for_integration claude)"
+    echo ""
     run_claude
     INTG_STATUS_claude="${CLAUDE_SETUP_STATUS:-unverified}"
     ;;
   *)
     case " $OPTIONAL_INTEGRATIONS " in
       *" claude "*)
-        if gum_confirm "Set up Claude integration? (optional for selected agents)"; then
+        if gum_confirm "Set up Claude integration? (optional for $(agents_for_integration claude))"; then
           print_header "Claude Setup"
+          print_info "Agents: $(agents_for_integration claude)"
+          echo ""
           run_claude
           INTG_STATUS_claude="${CLAUDE_SETUP_STATUS:-unverified}"
         else
@@ -263,14 +301,18 @@ esac
 case " $REQUIRED_INTEGRATIONS " in
   *" gws "*)
     print_header "Google Workspace Setup"
+    print_info "Agents: $(agents_for_integration gws)"
+    echo ""
     run_gws
     INTG_STATUS_gws="${GWS_SETUP_STATUS:-unverified}"
     ;;
   *)
     case " $OPTIONAL_INTEGRATIONS " in
       *" gws "*)
-        if gum_confirm "Set up Google Workspace integration? (optional for selected agents)"; then
+        if gum_confirm "Set up Google Workspace integration? (optional for $(agents_for_integration gws))"; then
           print_header "Google Workspace Setup"
+          print_info "Agents: $(agents_for_integration gws)"
+          echo ""
           run_gws
           INTG_STATUS_gws="${GWS_SETUP_STATUS:-unverified}"
         else
@@ -285,28 +327,19 @@ esac
 case " $REQUIRED_INTEGRATIONS " in
   *" xurl "*)
     print_header "X/Twitter Setup"
+    print_info "Agents: $(agents_for_integration xurl)"
+    echo ""
     run_xurl
     INTG_STATUS_xurl="${XURL_SETUP_STATUS:-unverified}"
     ;;
   *)
     case " $OPTIONAL_INTEGRATIONS " in
       *" xurl "*)
-        # Determine which agent wants this optionally
-        XURL_AGENT_NAME=""
-        for agent_id in $SELECTED_AGENT_IDS; do
-          wants=$(jq -r --arg id "$agent_id" \
-            '.agents[] | select(.id == $id) | .integrations.xurl // "none"' "$MANIFEST")
-          if [ "$wants" = "optional" ]; then
-            XURL_AGENT_NAME=$(jq -r --arg id "$agent_id" '.agents[] | select(.id == $id) | .name' "$MANIFEST")
-            break
-          fi
-        done
-        XURL_PROMPT="Set up X/Twitter integration?"
-        if [ -n "$XURL_AGENT_NAME" ]; then
-          XURL_PROMPT="$XURL_AGENT_NAME can optionally use X/Twitter for monitoring. Set it up?"
-        fi
-        if gum_confirm "$XURL_PROMPT"; then
+        XURL_AGENTS=$(agents_for_integration xurl)
+        if gum_confirm "$XURL_AGENTS can optionally use X/Twitter for monitoring. Set it up?"; then
           print_header "X/Twitter Setup"
+          print_info "Agents: $XURL_AGENTS"
+          echo ""
           run_xurl
           INTG_STATUS_xurl="${XURL_SETUP_STATUS:-unverified}"
         else
@@ -351,17 +384,47 @@ _status_icon() {
   esac
 }
 
+# Verifiable integrations: show validation status
 [ -n "$INTG_STATUS_discord" ] && echo "  $(_status_icon "$INTG_STATUS_discord") Discord ($INTG_STATUS_discord)"
 [ -n "$INTG_STATUS_github" ]  && echo "  $(_status_icon "$INTG_STATUS_github") GitHub ($INTG_STATUS_github)"
-[ -n "$INTG_STATUS_claude" ]  && echo "  $(_status_icon "$INTG_STATUS_claude") Claude ($INTG_STATUS_claude)"
-[ -n "$INTG_STATUS_gws" ]     && echo "  $(_status_icon "$INTG_STATUS_gws") Google Workspace ($INTG_STATUS_gws)"
 [ -n "$INTG_STATUS_xurl" ]    && echo "  $(_status_icon "$INTG_STATUS_xurl") X/Twitter ($INTG_STATUS_xurl)"
+# Non-verifiable integrations: show configured/skipped only
+if [ -n "$INTG_STATUS_claude" ]; then
+  if [ "$INTG_STATUS_claude" = "skipped" ]; then
+    echo "  — Claude (skipped)"
+  else
+    echo "  ✓ Claude (configured, verified on boot)"
+  fi
+fi
+if [ -n "$INTG_STATUS_gws" ]; then
+  if [ "$INTG_STATUS_gws" = "skipped" ]; then
+    echo "  — Google Workspace (skipped)"
+  elif [ "$INTG_STATUS_gws" = "validated" ]; then
+    echo "  ✓ Google Workspace (validated)"
+  else
+    echo "  ✓ Google Workspace (configured)"
+  fi
+fi
 
+echo ""
+
+gum style --foreground 3 "Next step: LLM Provider"
+echo ""
+print_info "Agents need at least one LLM provider to work."
+print_info "After the container is running, authenticate a provider with:"
+echo ""
+print_info "  make auth"
 echo ""
 
 if gum_confirm "Start OpenClaw now? (make up)"; then
   print_info "Running make up..."
   make -C "$SCRIPT_DIR" up
+  echo ""
+  if gum_confirm "Authenticate an LLM provider now? (make auth)"; then
+    make -C "$SCRIPT_DIR" auth
+  else
+    print_info "Run 'make auth' when ready to authenticate a provider."
+  fi
 else
-  print_info "Run 'make up' when ready to start."
+  print_info "Run 'make up' when ready, then 'make auth' to authenticate a provider."
 fi

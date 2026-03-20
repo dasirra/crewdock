@@ -8,6 +8,20 @@ XURL_SETUP_STATUS="skipped"
 
 # run_xurl — collect and validate X/Twitter API credentials
 run_xurl() {
+  # Show existing configuration status
+  local existing_bearer existing_client_id existing_client_secret
+  existing_bearer=$(env_get "X_BEARER_TOKEN")
+  existing_client_id=$(env_get "X_CLIENT_ID")
+  existing_client_secret=$(env_get "X_CLIENT_SECRET")
+
+  if [ -n "$existing_bearer" ] || [ -n "$existing_client_id" ]; then
+    print_info "Existing X/Twitter configuration found:"
+    [ -n "$existing_bearer" ] && print_info "  Bearer token: $(mask_token "$existing_bearer")"
+    [ -n "$existing_client_id" ] && print_info "  Client ID: $(mask_token "$existing_client_id")"
+    [ -n "$existing_client_secret" ] && print_info "  Client secret: $(mask_token "$existing_client_secret")"
+    echo ""
+  fi
+
   print_info "You need an X/Twitter API Bearer Token."
   print_info "Get one at: https://developer.x.com/en/portal/dashboard"
   echo ""
@@ -17,9 +31,6 @@ run_xurl() {
   print_info "  4. Copy the 'Bearer Token'"
   echo ""
 
-  local existing_bearer
-  existing_bearer=$(env_get "X_BEARER_TOKEN")
-
   local bearer_token bearer_status="unverified"
 
   while true; do
@@ -28,8 +39,6 @@ run_xurl() {
       bearer_token=$(gum_input_password "Bearer token (Enter to keep current)")
       if [ -z "$bearer_token" ]; then
         bearer_token="$existing_bearer"
-        bearer_status="unverified"
-        break
       fi
     else
       bearer_token=$(gum_input_password "Bearer Token")
@@ -46,22 +55,27 @@ run_xurl() {
     fi
 
     # Validate bearer token
+    # /2/users/me requires user-context auth; app-only tokens get 403.
+    # We use /2/tweets/search/recent which accepts app-only Bearer Tokens.
     print_info "Validating bearer token..."
-    local response http_code body_file
+    local http_code body_file
     body_file=$(mktemp)
 
-    http_code=$(curl -sf \
+    http_code=$(curl -s \
       -H "Authorization: Bearer $bearer_token" \
       -o "$body_file" \
       -w "%{http_code}" \
-      "https://api.x.com/2/users/me" 2>/dev/null || echo "000")
+      "https://api.x.com/2/tweets/search/recent?query=test&max_results=10" 2>/dev/null || echo "000")
 
     if [ "$http_code" = "200" ]; then
-      local x_username
-      x_username=$(python3 -c "import sys,json; d=json.load(open('$body_file')); print(d.get('data',{}).get('username',''))" 2>/dev/null || \
-                   grep -o '"username":"[^"]*"' "$body_file" | cut -d'"' -f4 || echo "")
       rm -f "$body_file"
-      print_success "Token valid! X username: $x_username"
+      print_success "Bearer token valid!"
+      bearer_status="validated"
+      break
+    elif [ "$http_code" = "403" ]; then
+      # Token is valid but app lacks access to this endpoint (free tier)
+      rm -f "$body_file"
+      print_success "Bearer token accepted (some endpoints may require elevated access)."
       bearer_status="validated"
       break
     else

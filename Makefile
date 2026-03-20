@@ -1,4 +1,4 @@
-.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth-anthropic auth-codex update clean help
+.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth auth-anthropic auth-codex update clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -80,6 +80,41 @@ dashboard:         ## Open dashboard: auto-approve pending devices, print URL
 
 onboard:           ## Run onboarding (for auth setup)
 	docker compose exec openclaw-gateway node dist/index.js onboard
+
+auth:              ## Authenticate an LLM provider (interactive selector)
+	@if ! docker compose ps --status running 2>/dev/null | grep -q openclaw-gateway; then \
+	  echo "Error: Gateway is not running. Run 'make up' first."; exit 1; \
+	fi; \
+	echo ""; \
+	AUTH_FILE="home/.openclaw/workspace/agents/main/auth-profiles.json"; \
+	CODEX_TAG=""; ANTHROPIC_TAG=""; \
+	if [ -f "$$AUTH_FILE" ]; then \
+	  if grep -q "openai-codex" "$$AUTH_FILE" 2>/dev/null; then CODEX_TAG=" [authenticated]"; fi; \
+	  if grep -q "anthropic" "$$AUTH_FILE" 2>/dev/null; then ANTHROPIC_TAG=" [authenticated]"; fi; \
+	fi; \
+	echo "  Agents need at least one LLM provider to work."; \
+	echo ""; \
+	CODEX_LABEL="OpenAI Codex (Recommended)$$CODEX_TAG"; \
+	ANTHROPIC_LABEL="Anthropic (Claude Code)$$ANTHROPIC_TAG"; \
+	if command -v gum >/dev/null 2>&1; then \
+	  PROVIDER=$$(printf '%s\n%s' "$$CODEX_LABEL" "$$ANTHROPIC_LABEL" | gum choose --header "Select LLM provider:"); \
+	else \
+	  echo "  Select LLM provider:"; \
+	  echo "    1) $$CODEX_LABEL"; \
+	  echo "    2) $$ANTHROPIC_LABEL"; \
+	  echo ""; \
+	  read -p "  Choice [1-2]: " choice; \
+	  case "$$choice" in \
+	    1) PROVIDER="OpenAI Codex";; \
+	    2) PROVIDER="Anthropic";; \
+	    *) echo "Invalid selection."; exit 1;; \
+	  esac; \
+	fi; \
+	case "$$PROVIDER" in \
+	  OpenAI*) $(MAKE) auth-codex;; \
+	  Anthropic*) $(MAKE) auth-anthropic;; \
+	  *) echo "No provider selected."; exit 1;; \
+	esac
 
 auth-anthropic:    ## Set up Anthropic OAuth (interactive paste-token)
 	@echo ""

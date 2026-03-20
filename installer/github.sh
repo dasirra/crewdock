@@ -28,9 +28,6 @@ run_github() {
       token=$(gum_input_password "GitHub PAT (Enter to keep current)")
       if [ -z "$token" ]; then
         token="$existing_token"
-        token_status="unverified"
-        GITHUB_SETUP_STATUS="unverified"
-        break
       fi
     else
       token=$(gum_input_password "GitHub Personal Access Token")
@@ -52,7 +49,7 @@ run_github() {
     headers_file=$(mktemp)
     body_file=$(mktemp)
 
-    http_code=$(curl -sf \
+    http_code=$(curl -s \
       -H "Authorization: Bearer $token" \
       -H "Accept: application/vnd.github+json" \
       -D "$headers_file" \
