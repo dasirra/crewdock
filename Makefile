@@ -97,22 +97,25 @@ auth:              ## Authenticate an LLM provider (interactive selector)
 	CODEX_LABEL="OpenAI Codex (Recommended)$$CODEX_TAG"; \
 	ANTHROPIC_LABEL="Anthropic (Claude Code)$$ANTHROPIC_TAG"; \
 	if command -v gum >/dev/null 2>&1; then \
-	  PROVIDER=$$(printf '%s\n%s' "$$CODEX_LABEL" "$$ANTHROPIC_LABEL" | gum choose --header "Select LLM provider:"); \
+	  PROVIDER=$$(printf '%s\n%s\n%s' "$$CODEX_LABEL" "$$ANTHROPIC_LABEL" "Exit" | gum choose --header "Select LLM provider:"); \
 	else \
 	  echo "  Select LLM provider:"; \
 	  echo "    1) $$CODEX_LABEL"; \
 	  echo "    2) $$ANTHROPIC_LABEL"; \
+	  echo "    3) Exit"; \
 	  echo ""; \
-	  read -p "  Choice [1-2]: " choice; \
+	  read -p "  Choice [1-3]: " choice; \
 	  case "$$choice" in \
 	    1) PROVIDER="OpenAI Codex";; \
 	    2) PROVIDER="Anthropic";; \
+	    3) PROVIDER="Exit";; \
 	    *) echo "Invalid selection."; exit 1;; \
 	  esac; \
 	fi; \
 	case "$$PROVIDER" in \
 	  OpenAI*) $(MAKE) auth-codex;; \
 	  Anthropic*) $(MAKE) auth-anthropic;; \
+	  Exit*) echo "  Skipped. Run 'make auth' when ready.";; \
 	  *) echo "No provider selected."; exit 1;; \
 	esac
 
