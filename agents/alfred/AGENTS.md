@@ -46,7 +46,7 @@ The `confirmation` block in `config.json` controls this behavior.
 
 #### Settings commands
 
-- "set briefing time [cron expression]" - update `briefing.cron` in config.json
+- "set briefing time [time]" - update `briefing.cron` in config.json and update the cron job: `openclaw cron edit <briefing.jobId> --cron "<new expression>"`
 - "enable/disable [section]" - toggle briefing sections
 - "status" - show current configuration
 

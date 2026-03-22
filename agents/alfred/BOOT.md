@@ -16,7 +16,7 @@ Run in order. If a check fails, **skip all checks that depend on it**.
    - If this fails, skip checks 3 and 4 (they require GWS auth).
 3. Unread email count: `gws gmail users messages list --params '{"userId":"me","q":"is:unread","maxResults":100}'` — count results.
 4. Today's event count: `gws calendar events list` for today — count results.
-5. Heartbeat: run `openclaw config get agents.list`, find this agent by `id`, read `.heartbeat.every`. Value `"0m"` or absent = disabled.
+5. Briefing cron job: if `briefing.jobId` exists in `config.json`, verify the job is active via `openclaw cron runs --id <jobId>`. If `jobId` is empty or missing, briefing is not scheduled.
 6. Briefing config: read `briefing.enabled` and `briefing.cron` from `config.json`.
 
 **Output rules:**

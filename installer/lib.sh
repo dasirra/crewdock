@@ -57,7 +57,7 @@ gum_input_password() {
 # gum_write PROMPT — multiline input, returns content
 gum_write() {
   local prompt="$1"
-  echo "$prompt"
+  echo "$prompt" >&2
   gum write --placeholder "Paste content here..."
 }
 

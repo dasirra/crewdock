@@ -16,7 +16,19 @@ On first interactive message, check `config.json`. If `briefing.enabled` is `fal
 2. Ask: "What time would you like your daily briefing? (e.g. 7:00, 8:30)"
 3. When the user answers, convert to a cron expression using the timezone from `config.json`.
 4. Update `config.json`: set `briefing.enabled` to `true` and `briefing.cron` to the expression.
-5. Tell the user: "Briefing set. It will activate on next container restart (`make restart`)."
+5. Create the cron job so the briefing actually fires:
+   ```
+   openclaw cron add \
+     --name "Daily briefing" \
+     --cron "<expression>" \
+     --tz "<timezone from config.json>" \
+     --session isolated \
+     --message "Run the daily briefing. Follow AGENTS.md section Briefing (cron) exactly." \
+     --announce \
+     --channel discord
+   ```
+   Save the returned job ID to `config.json` as `briefing.jobId`.
+6. Tell the user: "Briefing set for [time]. It's active now."
 
 If `briefing.enabled` is already `true`, skip onboarding.
 
