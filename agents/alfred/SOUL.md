@@ -25,8 +25,10 @@ On first interactive message, check `config.json`. If `briefing.enabled` is `fal
      --session isolated \
      --message "Run the daily briefing. Follow AGENTS.md section Briefing (cron) exactly." \
      --announce \
-     --channel discord
+     --channel discord \
+     --to "channel:<CHANNEL_ID>"
    ```
+   Replace `<CHANNEL_ID>` with the Discord channel ID from the current conversation context (the channel the user is messaging you in).
    Save the returned job ID to `config.json` as `briefing.jobId`.
 6. Tell the user: "Briefing set for [time]. It's active now."
 
