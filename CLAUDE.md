@@ -21,7 +21,6 @@ make restart            # Restart all; make restart-gateway for just gateway
 make logs               # Tail gateway logs; make logs-all for all services
 make auth               # Authenticate an LLM provider (interactive selector)
 make shell              # Bash into the gateway container
-make update             # Pull latest image, rebuild, restart
 make config-preview     # Preview generated openclaw.json (no Docker needed)
 ```
 
@@ -62,7 +61,7 @@ Forge is the autonomous development orchestrator. Understanding its flow is key 
 
 ## Version Pinning
 
-The OpenClaw base image version is pinned in `.openclaw-version` (CalVer `YYYY.M.D-patch`). The Dockerfile receives it as a build arg `OPENCLAW_VERSION`. Base image is `ghcr.io/openclaw/openclaw`. `make up` pulls the base image if the pinned version isn't cached locally. `make update` checks GHCR for newer versions and only rebuilds if one exists. `make version` shows pinned, running, and latest versions.
+The OpenClaw base image version is pinned in `.openclaw-version` (CalVer `YYYY.M.D-patch`). The Dockerfile receives it as a build arg `OPENCLAW_VERSION`. Base image is `ghcr.io/openclaw/openclaw`. `make up` pulls the base image if the pinned version isn't cached locally. `make version` shows pinned, running, and latest versions.
 
 ## Docker Setup
 

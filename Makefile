@@ -1,4 +1,4 @@
-.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth auth-anthropic auth-codex update clean help
+.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth auth-anthropic auth-codex clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -130,54 +130,6 @@ auth-anthropic:    ## Set up Anthropic OAuth (interactive paste-token)
 
 auth-codex:        ## Set up OpenAI Codex OAuth
 	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
-
-# --- Updates ---
-
-update:            ## Check for new OpenClaw version, update and rebuild if newer
-	@LATEST=$$(curl -sf "https://api.github.com/orgs/openclaw/packages/container/openclaw/versions?per_page=1" \
-	  | jq -r '.[0].metadata.container.tags[0]'); \
-	if [ -z "$$LATEST" ] || [ "$$LATEST" = "null" ]; then \
-	  echo "ERROR: Could not fetch latest version from GHCR"; exit 1; \
-	fi; \
-	RUNNING=$$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo ""); \
-	PINNED=$$(cat .openclaw-version 2>/dev/null || echo "none"); \
-	if [ -n "$$RUNNING" ]; then \
-	  echo "Running: $$RUNNING"; \
-	  echo "Pinned:  $$PINNED"; \
-	  echo "Latest:  $$LATEST"; \
-	  RUN_NUM=$$(echo "$$RUNNING" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
-	  LAT_NUM=$$(echo "$$LATEST" | awk -F. '{printf "%d%02d%02d", $$1, $$2, $$3}'); \
-	  if [ "$$LAT_NUM" -le "$$RUN_NUM" ]; then \
-	    echo "Already up to date."; exit 0; \
-	  fi; \
-	else \
-	  echo "Gateway not running — cannot verify current version."; \
-	  echo "Pinned:  $$PINNED"; \
-	  echo "Latest:  $$LATEST"; \
-	  echo "Forcing rebuild..."; \
-	fi; \
-	echo "Updating to $$LATEST..."; \
-	echo "$$LATEST" > .openclaw-version; \
-	export OPENCLAW_VERSION=$$LATEST; \
-	docker compose down && \
-	echo "Pulling ghcr.io/openclaw/openclaw:$$LATEST..." && \
-	docker pull ghcr.io/openclaw/openclaw:$$LATEST && \
-	echo "Building base image..." && \
-	docker build --no-cache --build-arg OPENCLAW_VERSION=$$LATEST -t openclaw-openclaw-gateway:latest -f Dockerfile . && \
-	echo "Building final image..." && \
-	docker compose build --no-cache && \
-	docker compose up -d --force-recreate; \
-	echo ""; \
-	echo "Updated to $$LATEST. Waiting for gateway to start..."; \
-	sleep 10; \
-	echo "Verifying..."; \
-	VERIFY=$$(docker compose exec -T openclaw-gateway node dist/index.js --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "could not verify"); \
-	echo "Running: $$VERIFY"; \
-	if [ "$$VERIFY" = "$$LATEST" ]; then \
-	  echo "Update successful!"; \
-	else \
-	  echo "WARNING: Expected $$LATEST but got $$VERIFY"; \
-	fi
 
 # --- Maintenance ---
 

@@ -227,7 +227,6 @@ full list of available variables and their descriptions.
 | `make auth-anthropic` | Authenticate Anthropic OAuth |
 | `make auth-codex` | Authenticate OpenAI Codex OAuth |
 | `make version` | Show pinned, running, and latest versions |
-| `make update` | Check for new OpenClaw version, rebuild if newer |
 | `make shell` | Open bash shell in the gateway container |
 | `make cli` | Open interactive OpenClaw CLI |
 | `make dashboard` | Auto-approve pending devices, print dashboard URL |
