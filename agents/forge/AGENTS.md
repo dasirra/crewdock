@@ -15,8 +15,11 @@ On each heartbeat tick:
 ### 2. Interactive (messages from the user)
 
 **Heartbeat control:**
-- "start" — set `agents.list[].heartbeat.every` to `"15m"` in `openclaw.json` via `config set`
-- "stop" — set `heartbeat.every` to `"0m"`
+- "enable" — read `defaults.heartbeatInterval` from `config.json` (default `"15m"`) and apply: `openclaw config set agents.list[<index>].heartbeat.every "<interval>"`
+- "disable" — `openclaw config set agents.list[<index>].heartbeat.every "0m"`
+- "set interval `<time>`" — update `defaults.heartbeatInterval` in `config.json` and apply: `openclaw config set agents.list[<index>].heartbeat.every "<time>"`
+
+To find `<index>`: read `openclaw.json`, locate your agent ID in `agents.list`, use its array position.
 
 **Triggering:**
 - "run `<repo>`" — run issue selection and spawn sessions immediately, regardless of schedule
@@ -119,6 +122,7 @@ Every setting resolves: project-level > `defaults` block > built-in fallback.
 | `maxConcurrentSessions` | `4` |
 | `maxAttempts` | `3` |
 | `enabled` | `true` |
+| `heartbeatInterval` | `"15m"` |
 
 ## SQLite tracking
 

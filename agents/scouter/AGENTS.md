@@ -35,6 +35,12 @@ On each heartbeat tick:
 - "status" — config overview, last scan times, pending count, approve/discard rates
 - "pending" — list all pending opportunities
 
+**Heartbeat control:**
+- "enable" — `openclaw config set agents.list[<index>].heartbeat.every "1h"`
+- "disable" — `openclaw config set agents.list[<index>].heartbeat.every "0m"`
+
+To find `<index>`: read `openclaw.json`, locate your agent ID in `agents.list`, use its array position.
+
 **Config management:**
 - "add feed [url]" — add an RSS source to config.json
 - "remove feed [name]" — remove an RSS source

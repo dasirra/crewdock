@@ -7,7 +7,8 @@
     "schedule": "on-demand",
     "thread": true,
     "maxConcurrentSessions": 4,
-    "maxAttempts": 3
+    "maxAttempts": 3,
+    "heartbeatInterval": "15m"
   },
   "projects": [
     {
