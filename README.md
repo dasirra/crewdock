@@ -55,15 +55,18 @@ workspace queries on demand.
 ### Forge — Dev Autopilot
 
 Autonomous development agent. Picks up GitHub issues, writes code, and
-opens PRs using Claude CLI.
+opens PRs. Forge uses OpenClaw's [ACP](https://docs.openclaw.ai/acp)
+(Agent Communication Protocol) to spawn isolated coding sessions that run
+Claude CLI (`acpx`) inside the container. Each session gets its own
+worktree, runs autonomously, and reports results back to Discord.
 
 **How it works:**
 
-1. A cron job fires every 15 minutes
+1. A heartbeat fires on a configurable interval (default 15m, disabled on first boot)
 2. Forge checks which repos are due based on their schedule
 3. For each repo, it fetches open issues (oldest first)
 4. Filters out issues with active sessions, existing PRs, or exclude labels
-5. Spawns a Claude coding session per issue (up to max concurrent)
+5. Spawns an ACP session per issue (up to max concurrent) that invokes Claude CLI
 6. Each session: reads the issue, creates a worktree, implements, tests, opens a PR
 7. Results are announced on Discord
 
@@ -79,7 +82,8 @@ opens PRs using Claude CLI.
     "schedule": "on-demand",
     "thread": true,
     "maxConcurrentSessions": 4,
-    "maxAttempts": 3
+    "maxAttempts": 3,
+    "heartbeatInterval": "15m"
   },
   "projects": [
     {
@@ -113,6 +117,7 @@ Projects inherit from `defaults` — only `repo` is required.
 | `thread` | `true` | Create a Discord thread per session |
 | `maxConcurrentSessions` | `4` | Max active autopilot sessions globally |
 | `maxAttempts` | `3` | Max retry attempts per issue |
+| `heartbeatInterval` | `"15m"` | Heartbeat interval when enabled |
 
 **Project options:**
 
