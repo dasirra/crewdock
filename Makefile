@@ -1,4 +1,4 @@
-.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview config-reset shell cli dashboard onboard auth auth-anthropic auth-codex test clean help
+.PHONY: up down restart restart-gateway logs logs-all status version config-preview config-reset shell dashboard auth auth-anthropic auth-codex test clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -15,16 +15,6 @@ up:                ## Build and start all services (pulls base image if version 
 		docker pull ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION); \
 	fi
 	docker compose up -d --build
-
-up-debug:          ## Build and start in foreground (no daemon, for debugging)
-	@mkdir -p home/.openclaw/workspace home/.claude home/.config/gh home/.config/gws projects
-	@[ -f home/.xurl ] || touch home/.xurl
-	@IMAGE_ID=$$(docker images -q ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION) 2>/dev/null); \
-	if [ -z "$$IMAGE_ID" ]; then \
-		echo "Pulling ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION)..."; \
-		docker pull ghcr.io/openclaw/openclaw:$(OPENCLAW_VERSION); \
-	fi
-	docker compose up --build
 
 down:              ## Stop all services
 	docker compose down
@@ -68,9 +58,6 @@ config-reset:      ## Regenerate openclaw.json from .env (discards runtime confi
 shell:             ## Open bash shell in the gateway container
 	docker compose exec openclaw-gateway bash
 
-cli:               ## Open interactive CLI
-	docker compose exec openclaw-gateway node dist/index.js
-
 dashboard:         ## Open dashboard: auto-approve pending devices, print URL
 	@TOKEN=$$(docker compose exec openclaw-gateway cat /home/node/.openclaw/.gateway-token 2>/dev/null) && \
 	PENDING=$$(docker compose exec -e OPENCLAW_GATEWAY_TOKEN=$$TOKEN openclaw-gateway \
@@ -83,9 +70,6 @@ dashboard:         ## Open dashboard: auto-approve pending devices, print URL
 		done; \
 	fi && \
 	echo "http://localhost:18789/?token=$$TOKEN"
-
-onboard:           ## Run onboarding (for auth setup)
-	docker compose exec openclaw-gateway node dist/index.js onboard
 
 auth:              ## Authenticate an LLM provider (interactive selector)
 	@if ! docker compose ps --status running 2>/dev/null | grep -q openclaw-gateway; then \

@@ -248,9 +248,7 @@ full list of available variables and their descriptions.
 | `make auth-codex` | Authenticate OpenAI Codex OAuth |
 | `make version` | Show pinned, running, and latest versions |
 | `make shell` | Open bash shell in the gateway container |
-| `make cli` | Open interactive OpenClaw CLI |
 | `make dashboard` | Auto-approve pending devices, print dashboard URL |
-| `make onboard` | Run onboarding wizard (LLM + integrations) |
 | `make config-preview` | Preview generated openclaw.json without Docker |
 | `make clean` | Remove dangling Docker images |
 | `make help` | Show all available commands |
