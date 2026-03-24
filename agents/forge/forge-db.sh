@@ -29,7 +29,8 @@ EOF
 db() { sqlite3 "$DB" "$@"; }
 
 # Escape single quotes for safe SQL interpolation: ' → ''
-esc() { printf '%s' "${1//\'/\'\'}"; }
+# Uses sed for bash 3.2 compatibility (parameter expansion backslash handling differs)
+esc() { printf '%s' "$1" | sed "s/'/''/g"; }
 
 # Validate that a value is a positive integer
 assert_int() {

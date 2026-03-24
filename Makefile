@@ -1,4 +1,4 @@
-.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview config-reset shell cli dashboard onboard auth auth-anthropic auth-codex clean help
+.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview config-reset shell cli dashboard onboard auth auth-anthropic auth-codex test clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -138,6 +138,9 @@ auth-codex:        ## Set up OpenAI Codex OAuth
 	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
 
 # --- Maintenance ---
+
+test:              ## Run all bats tests (requires: brew install bats-core)
+	bats tests/
 
 clean:             ## Remove old/dangling Docker images
 	docker image prune -f

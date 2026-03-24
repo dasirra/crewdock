@@ -22,6 +22,7 @@ make logs               # Tail gateway logs; make logs-all for all services
 make auth               # Authenticate an LLM provider (interactive selector)
 make shell              # Bash into the gateway container
 make config-preview     # Preview generated openclaw.json (no Docker needed)
+make test               # Run all bats tests (requires: brew install bats-core)
 ```
 
 ## Project Structure
@@ -75,10 +76,25 @@ Volume mount: `./home` -> `/home/node` (single persistent volume for all runtime
 
 Claude CLI and GWS skills are installed at first boot by `init.d/00-tools.sh` and persist in the home volume.
 
+## Testing
+
+Tests use [bats-core](https://github.com/bats-core/bats-core) (Bash Automated Testing System). Run `make test` before committing. All tests must pass before any commit.
+
+```
+tests/
+  test_helper.bash       # Shared setup/teardown helpers
+  forge-db.bats          # Forge SQLite helper tests
+  scouter-db.bats        # Scouter SQLite helper tests
+  lib.bats               # installer/lib.sh utility tests (env_get, env_set, mask_token)
+```
+
+When modifying shell scripts, add or update corresponding tests. Tests run against real SQLite databases in temp directories, no Docker needed.
+
 ## Git Conventions
 
 - Branch naming: `feat/`, `fix/`, `chore/` prefixes, or issue-number based (`1-sqlite-tracking`)
 - Commit messages: `feat:`, `fix:`, `chore:`, `merge:` prefixes
+- **Run `make test` before committing.** All tests must pass.
 - Never push to main directly — always feature branches + PRs
 - Forge creates worktree-based feature branches per issue
 

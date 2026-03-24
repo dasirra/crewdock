@@ -32,7 +32,9 @@ EOF
 
 db() { sqlite3 "$DB" "$@"; }
 
-esc() { printf '%s' "${1//\'/''}"; }
+# Escape single quotes for safe SQL interpolation: ' → ''
+# Uses sed for bash 3.2 compatibility (parameter expansion backslash handling differs)
+esc() { printf '%s' "$1" | sed "s/'/''/g"; }
 
 assert_int() {
   [[ "$1" =~ ^[0-9]+$ ]] || { echo "Error: expected integer, got '$1'" >&2; exit 1; }
