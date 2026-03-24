@@ -39,7 +39,7 @@ Only `install.sh`, `installer/`, `agents/`, `docker-compose.yaml`, `Dockerfile`,
 
 Forge is the autonomous development orchestrator. Understanding its flow is key to working in this repo.
 
-**Two modes:** cron heartbeat (every 15 min, 24/7) and interactive Telegram commands.
+**Two modes:** scheduled cron job (every 15 min, 24/7) and interactive Discord commands.
 
 **Cron cycle flow:**
 1. Reads `workspace/agents/forge/config.json` for project list and defaults

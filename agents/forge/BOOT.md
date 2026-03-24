@@ -16,7 +16,7 @@ Run in order. If a check fails, **skip all checks that depend on it**.
 3. `gh auth status` — GitHub CLI authentication. Credentials in `~/.config/gh/hosts.yml`.
    - If this fails, skip check 6 (repo scanning requires GitHub auth).
 4. `command -v claude` — Claude CLI installed (by `init.d/01-tools.sh`).
-5. Heartbeat: run `openclaw config get agents.list`, find this agent by `id`, read `.heartbeat.every`. Value `"0m"` or absent = disabled.
+5. Cron job: read `cron.enabled` and `cron.jobId` from `config.json`. If `jobId` is present, verify the job exists via `openclaw cron list`.
 6. Enabled project count: from `config.json`, count projects where `enabled` is `true`.
 7. Active sessions: run `sessions_list`, count names matching `autopilot-*`.
 
@@ -59,7 +59,7 @@ Use when `config.json` exists and is not empty. Post to Discord:
 **One line only.** Include only the fields you could actually check. Omit fields whose checks were skipped.
 
 Examples:
-- All OK: `Forge online. Repos: 3 monitored. Sessions: 1/4 active. Heartbeat: 15m. Queue: 2 pending.`
+- All OK: `Forge online. Repos: 3 monitored. Sessions: 1/4 active. Cron: every 15m. Queue: 2 pending.`
 - GitHub missing: `Forge online. GitHub: not authenticated. Set `GH_TOKEN` in `.env`, then `make restart`.`
 - Claude missing: `Forge online. Repos: 3. Claude CLI: not installed. Run `make restart`.`
 

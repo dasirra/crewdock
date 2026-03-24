@@ -2,7 +2,7 @@
 # 03-agents.sh -- Install new agents or sync definition files for existing ones
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 #
-# Agent registration and heartbeat config are handled by 01-config.sh.
+# Agent registration and scheduling config are handled by 02-config.sh.
 # This script only manages workspace files (templates, configs, databases).
 
 AGENT_TEMPLATES="/opt/openclaw-agents"

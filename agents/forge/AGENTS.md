@@ -69,7 +69,7 @@ For any command, `<repo>` can be just the repo name (e.g., `my-app`) or full `ow
 ## Schedule format
 
 - `on-demand` — only runs when manually triggered
-- `always` — runs on every heartbeat
+- `always` — runs on every cron cycle
 - `HH-HH` — active during this hour range (e.g., `22-07` wraps around midnight)
 - `HH-HH weekdays` — Monday through Friday only
 - `HH-HH weekends` — Saturday and Sunday only
@@ -97,7 +97,7 @@ Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and sessi
    - **Open PRs** — skip issues that already have an open PR (check branch names via `gh pr list`)
    - **Active sessions** — skip issues with an active ACP session (match `autopilot-<repo>-<number>` labels via `sessions_list`)
 
-4. Select the single oldest eligible issue. Only one issue is spawned per heartbeat cycle.
+4. Select the single oldest eligible issue. Only one issue is spawned per cron cycle.
 
 ## Spawning ACP sessions
 

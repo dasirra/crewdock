@@ -42,7 +42,7 @@ config, and database. You deploy once and they take it from there.
 ### Overlord — System Admin
 
 Manages agent configuration through the OpenClaw control UI (dashboard).
-Adjusts heartbeat schedules, channel bindings, and enabled state for the
+Adjusts heartbeat schedules, cron jobs, channel bindings, and enabled state for the
 other agents. No cron, no Discord channel. Access it via `make dashboard`.
 
 ### Alfred — Personal Assistant
@@ -62,7 +62,7 @@ worktree, runs autonomously, and reports results back to Discord.
 
 **How it works:**
 
-1. A heartbeat fires on a configurable interval (default 15m, disabled on first boot)
+1. A cron job fires on a configurable interval (default every 15m, disabled on first boot)
 2. Forge checks which repos are due based on their schedule
 3. For each repo, it fetches open issues (oldest first)
 4. Filters out issues with active sessions, existing PRs, or exclude labels
@@ -75,6 +75,11 @@ worktree, runs autonomously, and reports results back to Discord.
 ```json
 {
   "timezone": "America/New_York",
+  "cron": {
+    "enabled": false,
+    "interval": "*/15 * * * *",
+    "jobId": ""
+  },
   "defaults": {
     "branch": "main",
     "agentId": "claude",
@@ -82,8 +87,7 @@ worktree, runs autonomously, and reports results back to Discord.
     "schedule": "on-demand",
     "thread": true,
     "maxConcurrentSessions": 4,
-    "maxAttempts": 3,
-    "heartbeatInterval": "15m"
+    "maxAttempts": 3
   },
   "projects": [
     {
@@ -117,7 +121,7 @@ Projects inherit from `defaults` — only `repo` is required.
 | `thread` | `true` | Create a Discord thread per session |
 | `maxConcurrentSessions` | `4` | Max active autopilot sessions globally |
 | `maxAttempts` | `3` | Max retry attempts per issue |
-| `heartbeatInterval` | `"15m"` | Heartbeat interval when enabled |
+| `cron.interval` | `"*/15 * * * *"` | Cron schedule when enabled |
 
 **Project options:**
 
