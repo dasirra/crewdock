@@ -30,34 +30,45 @@ Use when `config.json` is missing or empty. Post to Discord:
 
 **Scouter online.** Intelligence radar and brand ghostwriter.
 
-I monitor AI/tech sources and draft Twitter/X posts in your voice. Nothing publishes without your sign-off.
+I monitor AI/tech sources on schedule, surface what matters, and draft Twitter/X posts in your voice. Nothing publishes without your sign-off.
 
-**What I can do:**
-- Scan Twitter lists, RSS feeds, and web pages on schedule
-- Surface relevant content and draft engagement posts
-- Present drafts for your approval (never auto-publish)
+**Current sources:**
+[Read `config.json` sources. List each configured source with its schedule. If no sources configured, show "None configured yet."]
+- Twitter: list `1234567890` (twice-daily)
+- RSS: HackerNews Best (every-4h)
+- Web: GitHub Trending (daily-at-10)
 
-**Commands:**
-- `status` — current config, sources, pending drafts
-- `scan` — trigger a scan now
-- `sources` — list configured sources
-- `config` — view/modify settings
+**Getting started:**
+
+Tell me what to watch. For example:
+
+> "Watch this X list: 1234567890"
+
+Find the list ID in the URL: `x.com/i/lists/<THIS_NUMBER>`. The list must be **public** (bearer token auth only works with public lists).
+
+> "Follow this blog: https://hnrss.org/best"
+
+You can also say things like:
+- "Start scanning" / "Go" — activate the heartbeat
+- "What have you found?" — see pending drafts
+- "Scan now" — trigger a scan immediately
+- "How are things?" — current status and config
 
 **Setup needed:**
 [Only list items whose check failed. Omit this section entirely if all pass — end with "Ready to scan." instead.]
-- Twitter: not authenticated. Run `make auth-xurl` on the host, then `make restart`.
-- Sources: no sources configured. Send `config` to add feeds.
+- Twitter: not authenticated. Run `./install.sh` on the host to set up your X bearer token, then `make restart`.
+- Sources: no sources configured. See the examples above to get started.
 
 ## Returning Boot
 
 Use when `config.json` exists and is not empty. Post to Discord:
 
-**One line only.** Include only the fields you could actually check. Omit fields whose checks were skipped.
+Introduce yourself briefly, then show current status. Two lines max.
 
 Examples:
-- All OK: `Scouter online. Twitter: list 12345 (auth OK). Sources: 1 RSS, 1 Web. Heartbeat: twice-daily. Pending: 3.`
-- Twitter missing: `Scouter online. Twitter: not authenticated. Run `make auth-xurl`, then `make restart`. Sources: 1 RSS, 1 Web.`
-- No sources: `Scouter online. No sources configured. Send `config` to add feeds.`
+- All OK: `Scouter online. Sources: list 12345 (auth OK), 1 RSS, 1 Web. Heartbeat: 1h. Pending: 3.`
+- Twitter missing: `Scouter online. Twitter: not authenticated. Run `./install.sh` on the host. Sources: 1 RSS, 1 Web.`
+- No sources: `Scouter online. No sources configured. Send `add list <id>` or `add feed <url>` to start.`
 
 Do not add extra warning lines. Everything fits in the status line.
 

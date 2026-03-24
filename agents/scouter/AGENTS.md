@@ -18,34 +18,37 @@ On each heartbeat tick:
 
 ### 2. Interactive (messages from the user)
 
-**Engagement:**
-- "approve `<id>`" — mark opportunity as approved. Reply with final draft text for copy-paste.
-- "edit `<id>` [new text]" — replace draft with user's text, mark as edited. Reply with final text.
-- "discard `<id>`" — mark as discarded.
-- "retype `<id>` `<type>`" — change the post template for a pending opportunity. Regenerate the draft using the new template structure. Valid types: library-review, reply, quote-tweet, original-take, thread, news-commentary, resource-share, build-log.
+Users talk in natural language. Match intent to action (see SOUL.md "Handling requests"). The categories below describe what Scouter can do, not exact command syntax.
+
+**Drafts and engagement:**
+- Approve a draft ("looks good", "ship 42", "approve") -> mark opportunity as approved, reply with final text for copy-paste.
+- Edit a draft ("rewrite 42: ...", "change it to...") -> replace draft with user's text, mark as edited, reply with final text.
+- Discard ("skip 42", "nah", "not this one") -> mark as discarded.
+- Change template ("make 42 a thread", "retype as quote-tweet") -> regenerate draft using new template. Valid types: library-review, reply, quote-tweet, original-take, thread, news-commentary, resource-share, build-log.
 
 **Content creation:**
-- "analyze [url or post text]" — analyze content, detect the appropriate template type (library-review for GitHub repos, news-commentary for articles, reply for tweets), visit the URL if link-first type, and generate a structured draft
-- "analyze [url] as `<type>`" — analyze content using a specific template type instead of auto-detecting
-- "write about [topic]" — generate an original post (original-take by default, thread if complex)
-- "write `<type>` about [topic]" — generate a post using a specific template type
+- Analyze content ("what do you think about [url]", "check this out [url]") -> detect template type (library-review for repos, news-commentary for articles, reply for tweets), visit URL if link-first, generate structured draft.
+- Analyze with specific type ("analyze [url] as a thread") -> use the requested template instead of auto-detecting.
+- Write original content ("write about [topic]", "draft something on [topic]") -> original-take by default, thread if complex.
+- Write with specific type ("write a library-review about [topic]") -> use the requested template.
 
 **Information:**
-- "daily summary" — consolidated briefing of everything scanned today
-- "status" — config overview, last scan times, pending count, approve/discard rates
-- "pending" — list all pending opportunities
+- Summary ("what did you find today?", "daily summary") -> consolidated briefing of everything scanned today.
+- Status ("how are things?", "status") -> config overview, last scan times, pending count, approve/discard rates.
+- Pending ("anything waiting?", "show me the drafts") -> list all pending opportunities.
 
 **Heartbeat control:**
-- "enable" — `openclaw config set agents.list[<index>].heartbeat.every "1h"`
-- "disable" — `openclaw config set agents.list[<index>].heartbeat.every "0m"`
-- "set interval `<time>`" — `openclaw config set agents.list[<index>].heartbeat.every "<time>"`
+- Enable ("start scanning", "go", "enable") -> `openclaw config set agents.list[<index>].heartbeat.every "1h"`
+- Disable ("take a break", "stop", "disable") -> `openclaw config set agents.list[<index>].heartbeat.every "0m"`
+- Change interval ("scan every 30 minutes", "check more often") -> `openclaw config set agents.list[<index>].heartbeat.every "<time>"`
 
 To find `<index>`: read `openclaw.json`, locate your agent ID in `agents.list`, use its array position. Heartbeat hot-reloads instantly.
 
-**Config management:**
-- "add feed [url]" — add an RSS source to config.json
-- "remove feed [name]" — remove an RSS source
-- "set list [list_id]" — change the X List to monitor
+**Source management:**
+- Add RSS ("follow this blog: [url]", "add feed [url]") -> add an RSS source to config.json.
+- Remove RSS ("stop following [name]", "remove feed [name]") -> remove an RSS source.
+- Set X list ("watch list 12345", "monitor this X list: [id]") -> change the X List to monitor.
+- Remove X list ("stop watching Twitter", "remove the list") -> remove the Twitter source.
 
 Changes take effect on the next heartbeat.
 
