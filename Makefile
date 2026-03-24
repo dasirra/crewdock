@@ -1,4 +1,4 @@
-.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview shell cli dashboard onboard auth auth-anthropic auth-codex clean help
+.PHONY: up up-debug down restart restart-gateway logs logs-all status version config-preview config-reset shell cli dashboard onboard auth auth-anthropic auth-codex clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -55,7 +55,13 @@ config-preview:    ## Preview openclaw.json that would be generated (no Docker n
 	@set -a && [ -f .env ] && . ./.env || true && set +a && \
 	  DISCORD_AGENTS="forge scouter alfred" \
 	  HOME="." \
-	  bash init.d/01-config.sh --preview
+	  bash init.d/02-config.sh --preview
+
+config-reset:      ## Regenerate openclaw.json from .env (discards runtime config changes)
+	@echo "This will regenerate openclaw.json from .env, discarding any runtime changes."
+	@read -p "Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || { echo "Aborted."; exit 1; }
+	docker compose exec -e CONFIG_RESET=1 openclaw-gateway bash -c 'source /usr/local/lib/openclaw-init.d/02-config.sh'
+	$(MAKE) restart-gateway
 
 # --- CLI tools ---
 

@@ -3,14 +3,11 @@ FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 
 USER root
 
-# Core tools
+# Extra tools (procps, curl, git, openssl already in base image)
 RUN apt-get update && apt-get install -y \
     cron \
     jq \
-    procps \
-    curl \
     gnupg \
-    git \
     build-essential \
     python3 \
     python3-pip \

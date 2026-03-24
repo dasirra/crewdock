@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# 01-config.sh -- Build openclaw.json from env vars + preserved heartbeats
+# 02-config.sh -- Generate openclaw.json on first boot, preserve on subsequent boots
 # SCRIPT_NAME, log(), and DISCORD_AGENTS are provided by docker-entrypoint.sh
 #
 # Standalone usage (preview mode):
-#   DISCORD_AGENTS="forge scouter alfred" bash init.d/01-config.sh --preview
+#   DISCORD_AGENTS="forge scouter alfred" bash init.d/02-config.sh --preview
+#
+# Force regeneration (used by 'make config-reset'):
+#   CONFIG_RESET=1 (env var) or --reset (arg)
 
 # Support standalone preview mode (used by 'make config-preview')
 if [ -z "${SCRIPT_NAME:-}" ]; then
-    SCRIPT_NAME="01-config"
+    SCRIPT_NAME="02-config"
     log() { echo "[preview] $*" >&2; }
     DISCORD_AGENTS="${DISCORD_AGENTS:-forge scouter alfred}"
 fi
@@ -16,27 +19,17 @@ CONFIG_FILE="${HOME}/.openclaw/openclaw.json"
 WORKSPACE="${HOME}/.openclaw/workspace"
 
 PREVIEW=false
-if [ "${1:-}" = "--preview" ] || [ "${CONFIG_PREVIEW:-}" = "1" ]; then
-    PREVIEW=true
-fi
+RESET=false
+for arg in "$@"; do
+    case "$arg" in
+        --preview) PREVIEW=true ;;
+        --reset)   RESET=true ;;
+    esac
+done
+[ "${CONFIG_PREVIEW:-}" = "1" ] && PREVIEW=true
+[ "${CONFIG_RESET:-}" = "1" ] && RESET=true
 
-# ---------- Step 1: Preserve heartbeat operational fields from existing config ----------
-
-SAVED_HEARTBEATS='{}'
-
-if [ -f "$CONFIG_FILE" ]; then
-    SAVED_HEARTBEATS=$(jq '
-        [.agents.list[]? | {
-            key: .id,
-            value: (.heartbeat // {}
-                | del(.target, .accountId, .to, .directPolicy)
-                | select(length > 0))
-        }] | from_entries // {}
-    ' "$CONFIG_FILE")
-    log "Preserved heartbeat config from previous boot."
-fi
-
-# ---------- Step 2: Resolve gateway token (persisted file + env export) ----------
+# ---------- Step 1: Resolve gateway token (always needed, even if config exists) ----------
 
 if [ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]; then
     log "Using gateway token from environment."
@@ -51,6 +44,17 @@ else
         chmod 600 "$TOKEN_FILE"
         log "Generated and persisted new gateway token."
     fi
+fi
+
+# ---------- Step 2: Skip generation if config exists (unless preview or reset) ----------
+
+if [ "$PREVIEW" = false ] && [ "$RESET" = false ] && [ -f "$CONFIG_FILE" ]; then
+    log "Config exists, preserving runtime state. Use 'make config-reset' to regenerate."
+    return 0 2>/dev/null || exit 0
+fi
+
+if [ "$RESET" = true ] && [ -f "$CONFIG_FILE" ]; then
+    log "CONFIG_RESET requested. Regenerating config from env vars."
 fi
 
 # ---------- Step 3: Build agents data from env vars ----------
@@ -191,20 +195,12 @@ CORE=$(jq -n \
     }
     ')
 
-# ---------- Step 5: Merge preserved heartbeats ----------
-
-FINAL=$(echo "$CORE" | jq --argjson hb "$SAVED_HEARTBEATS" '
-    .agents.list |= map(
-        if .heartbeat and $hb[.id] then .heartbeat += $hb[.id] else . end
-    )
-')
-
-# ---------- Step 6: Write or preview ----------
+# ---------- Step 5: Write or preview ----------
 
 if [ "$PREVIEW" = true ]; then
-    echo "$FINAL" | jq .
+    echo "$CORE" | jq .
 else
     mkdir -p "$(dirname "$CONFIG_FILE")"
-    echo "$FINAL" > "$CONFIG_FILE"
+    echo "$CORE" > "$CONFIG_FILE"
     log "Config written to $CONFIG_FILE"
 fi
