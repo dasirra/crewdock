@@ -51,15 +51,18 @@ run_gws() {
     fi
 
     # Validate JSON structure
+    # Supports three formats:
+    #   1. OAuth Desktop/Web: {"installed": {"client_id": ..., "client_secret": ...}}
+    #   2. OAuth Web:         {"web": {"client_id": ..., "client_secret": ...}}
+    #   3. Exported auth:     {"client_id": ..., "client_secret": ..., "type": "authorized_user"}
     local valid=0
     if command -v python3 >/dev/null 2>&1; then
       client_id=$(echo "$json_content" | python3 -c "
 import sys, json
 try:
     d = json.loads(sys.stdin.read())
-    # Support both 'installed' and 'web' credential types
-    creds = d.get('installed') or d.get('web')
-    if creds and creds.get('client_id') and creds.get('client_secret'):
+    creds = d.get('installed') or d.get('web') or d
+    if creds.get('client_id') and creds.get('client_secret'):
         print('valid')
     else:
         print('invalid')
@@ -71,8 +74,8 @@ except:
       fi
     elif command -v jq >/dev/null 2>&1; then
       local cid csc
-      cid=$(echo "$json_content" | jq -r '.installed.client_id // .web.client_id // empty' 2>/dev/null || echo "")
-      csc=$(echo "$json_content" | jq -r '.installed.client_secret // .web.client_secret // empty' 2>/dev/null || echo "")
+      cid=$(echo "$json_content" | jq -r '.installed.client_id // .web.client_id // .client_id // empty' 2>/dev/null || echo "")
+      csc=$(echo "$json_content" | jq -r '.installed.client_secret // .web.client_secret // .client_secret // empty' 2>/dev/null || echo "")
       if [ -n "$cid" ] && [ -n "$csc" ]; then
         valid=1
       fi
@@ -88,7 +91,7 @@ except:
       status="validated"
       break
     else
-      print_error "Invalid credentials JSON. Expected 'installed.client_id' and 'installed.client_secret' fields."
+      print_error "Invalid credentials JSON. Expected 'client_id' and 'client_secret' fields (nested under 'installed'/'web' or at top level)."
       local fail_choice
       fail_choice=$(printf 'Retry\nSave anyway\nSkip' | gum choose --header "What would you like to do?")
       case "$fail_choice" in
