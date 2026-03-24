@@ -114,9 +114,8 @@ CORE=$(jq -n \
                         name: .id,
                         workspace: ($workspace + "/agents/" + .id),
                         agentDir: ($workspace + "/agents/" + .id)
-                    } + (if .channel != "" and .id != "alfred" then {
+                    } + (if .channel != "" and .id != "forge" then {
                         heartbeat: {
-                            every: "0m",
                             target: "discord",
                             to: ("channel:" + .channel),
                             accountId: .id,

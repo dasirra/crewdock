@@ -38,8 +38,9 @@ On each heartbeat tick:
 **Heartbeat control:**
 - "enable" — `openclaw config set agents.list[<index>].heartbeat.every "1h"`
 - "disable" — `openclaw config set agents.list[<index>].heartbeat.every "0m"`
+- "set interval `<time>`" — `openclaw config set agents.list[<index>].heartbeat.every "<time>"`
 
-To find `<index>`: read `openclaw.json`, locate your agent ID in `agents.list`, use its array position.
+To find `<index>`: read `openclaw.json`, locate your agent ID in `agents.list`, use its array position. Heartbeat hot-reloads instantly.
 
 **Config management:**
 - "add feed [url]" — add an RSS source to config.json

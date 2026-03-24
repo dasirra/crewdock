@@ -2,9 +2,9 @@
 
 ## Two modes of operation
 
-### 1. Cron cycle (heartbeat)
+### 1. Cron cycle (scheduled job)
 
-On each heartbeat tick:
+Triggered by an OpenClaw cron job at the interval configured in `cron.interval`. On each trigger:
 
 1. Read `config.json`.
 2. Check global concurrency: count active `autopilot-*` sessions via `sessions_list`. If `defaults.maxConcurrentSessions` reached, skip this cycle.
@@ -14,12 +14,23 @@ On each heartbeat tick:
 
 ### 2. Interactive (messages from the user)
 
-**Heartbeat control:**
-- "enable" — read `defaults.heartbeatInterval` from `config.json` (default `"15m"`) and apply: `openclaw config set agents.list[<index>].heartbeat.every "<interval>"`
-- "disable" — `openclaw config set agents.list[<index>].heartbeat.every "0m"`
-- "set interval `<time>`" — update `defaults.heartbeatInterval` in `config.json` and apply: `openclaw config set agents.list[<index>].heartbeat.every "<time>"`
-
-To find `<index>`: read `openclaw.json`, locate your agent ID in `agents.list`, use its array position.
+**Cron control:**
+- "enable" — create the cron job using `cron.interval` from `config.json` (default `*/15 * * * *`):
+  ```
+  openclaw cron add \
+    --name "Forge cron cycle" \
+    --cron "<cron.interval>" \
+    --tz "<timezone from config.json>" \
+    --session isolated \
+    --message "Run the cron cycle. Follow AGENTS.md section 'Cron cycle (scheduled job)' exactly." \
+    --announce \
+    --channel discord \
+    --to "channel:<CHANNEL_ID>"
+  ```
+  Replace `<CHANNEL_ID>` with the Discord channel ID from the current conversation context.
+  Save the returned job ID to `cron.jobId` in `config.json` and set `cron.enabled` to `true`.
+- "disable" — delete the cron job: `openclaw cron delete <cron.jobId>`. Set `cron.enabled` to `false` and clear `cron.jobId` in `config.json`.
+- "set interval `<cron-expr>`" — update `cron.interval` in `config.json`. If currently enabled, edit the existing job: `openclaw cron edit <cron.jobId> --cron "<cron-expr>"`
 
 **Triggering:**
 - "run `<repo>`" — run issue selection and spawn sessions immediately, regardless of schedule
@@ -122,7 +133,7 @@ Every setting resolves: project-level > `defaults` block > built-in fallback.
 | `maxConcurrentSessions` | `4` |
 | `maxAttempts` | `3` |
 | `enabled` | `true` |
-| `heartbeatInterval` | `"15m"` |
+| `cron.interval` | `"*/15 * * * *"` |
 
 ## SQLite tracking
 
