@@ -63,7 +63,12 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
                 [[ "$filename" == $pattern ]] && skip=true && break
             done
             if [ "$skip" = true ]; then
-                log "  Protected: $filename"
+                if [ ! -e "$target/$filename" ]; then
+                    cp -r "$src_file" "$target/$filename"
+                    log "  Seeded: $filename"
+                else
+                    log "  Protected: $filename"
+                fi
                 continue
             fi
 
