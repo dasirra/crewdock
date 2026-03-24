@@ -59,8 +59,8 @@ workspace queries on demand.
 ### Forge — Dev Autopilot
 
 Autonomous development agent. Picks up GitHub issues, writes code, and
-opens PRs. Forge uses OpenClaw's [ACP](https://docs.openclaw.ai/acp)
-(Agent Communication Protocol) to spawn isolated coding sessions that run
+opens PRs. Forge uses OpenClaw's [ACP](https://docs.openclaw.ai/tools/acp-agents)
+(Agent Client Protocol) to spawn isolated coding sessions that run
 Claude CLI (`acpx`) inside the container. Each session gets its own
 worktree, runs autonomously, and reports results back to Discord.
 

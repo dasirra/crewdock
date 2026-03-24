@@ -9,7 +9,7 @@ CLAUDE_SETUP_STATUS="skipped"
 # run_claude — collect Claude OAuth token (not validated on host)
 run_claude() {
   print_info "This token powers the dev orchestrator (Forge), which spawns autonomous"
-  print_info "coding sessions. It connects to Claude Code CLI via ACP (Agent Control Protocol)"
+  print_info "coding sessions. It connects to Claude Code CLI via ACP (Agent Client Protocol)"
   print_info "running inside the container. This is a standard Claude Code usage pattern"
   print_info "and does not violate Anthropic's Terms of Service."
   echo ""
