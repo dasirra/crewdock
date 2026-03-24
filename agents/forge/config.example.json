@@ -1,5 +1,5 @@
 {
-  "timezone": "Europe/Madrid",
+  "timezone": "UTC",
   "cron": {
     "enabled": false,
     "interval": "*/15 * * * *",

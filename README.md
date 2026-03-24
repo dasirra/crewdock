@@ -1,26 +1,47 @@
-# CrewDock
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/logo-horizontal.svg">
+    <source media="(prefers-color-scheme: light)" srcset="brand/logo-horizontal-dark.svg">
+    <img alt="CrewDock" src="brand/logo-horizontal-dark.svg" width="420">
+  </picture>
+</p>
 
-A self-hosted AI crew that runs 24/7 on your server. Four specialized agents working autonomously in Docker, built on [OpenClaw](https://github.com/openclaw/openclaw).
+<p align="center">
+  A self-hosted AI crew that runs 24/7 on your server.<br>
+  Three specialized agents working autonomously in Docker, built on <a href="https://github.com/openclaw/openclaw">OpenClaw</a>.
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-required-blue?logo=docker)](https://www.docker.com/)
-[![OpenClaw](https://img.shields.io/badge/OpenClaw-2026.3.13--1-purple)](https://github.com/openclaw/openclaw)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/dasirra)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-required-blue?logo=docker" alt="Docker"></a>
+  <a href="https://github.com/openclaw/openclaw"><img src="https://img.shields.io/badge/OpenClaw-2026.3.13--1-purple" alt="OpenClaw"></a>
+  <a href="https://buymeacoffee.com/dasirra"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buymeacoffee" alt="Buy Me A Coffee"></a>
+</p>
 
 ## Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#7C3AED',
+  'primaryTextColor': '#E0E0FF',
+  'primaryBorderColor': '#4F46E5',
+  'lineColor': '#A78BFA',
+  'secondaryColor': '#4F46E5',
+  'tertiaryColor': '#1E1B4B',
+  'clusterBkg': '#1E1B4B',
+  'clusterBorder': '#4F46E5',
+  'edgeLabelBackground': '#1E1B4B',
+  'nodeTextColor': '#E0E0FF'
+}}}%%
 graph TB
     subgraph CrewDock ["CrewDock (Docker)"]
         GW[OpenClaw Gateway]
 
-        GW --> Overlord["Overlord<br/><i>System Admin</i>"]
         GW --> Forge["Forge<br/><i>Dev Autopilot</i>"]
         GW --> Alfred["Alfred<br/><i>Personal Assistant</i>"]
         GW --> Scouter["Scouter<br/><i>Intel Radar</i>"]
     end
 
-    Overlord -.-> |config management| GW
     Forge --> |worktrees + PRs| GitHub
     Alfred --> |read/write| Google["Google Workspace"]
     Scouter --> |monitor| Sources["RSS / Twitter / Web"]
@@ -31,7 +52,7 @@ graph TB
 ## What is CrewDock
 
 CrewDock turns a Docker host into a 24/7 AI operations center. It runs
-[OpenClaw](https://github.com/openclaw/openclaw) as the gateway, adds four
+[OpenClaw](https://github.com/openclaw/openclaw) as the gateway, adds three
 specialized agents, and wires everything to Discord so you can monitor and
 interact from your phone.
 
@@ -39,12 +60,6 @@ The agents run on cron schedules or on demand. Each one has its own workspace,
 config, and database. You deploy once and they take it from there.
 
 ## The Agents
-
-### Overlord — System Admin
-
-Manages agent configuration through the OpenClaw control UI (dashboard).
-Adjusts heartbeat schedules, cron jobs, channel bindings, and enabled state for the
-other agents. No cron, no Discord channel. Access it via `make dashboard`.
 
 ### Alfred — Personal Assistant
 
@@ -56,8 +71,8 @@ workspace queries on demand.
 ### Forge — Dev Autopilot
 
 Autonomous development agent. Picks up GitHub issues, writes code, and
-opens PRs. Forge uses OpenClaw's [ACP](https://docs.openclaw.ai/acp)
-(Agent Communication Protocol) to spawn isolated coding sessions that run
+opens PRs. Forge uses OpenClaw's [ACP](https://docs.openclaw.ai/tools/acp-agents)
+(Agent Client Protocol) to spawn isolated coding sessions that run
 Claude CLI (`acpx`) inside the container. Each session gets its own
 worktree, runs autonomously, and reports results back to Discord.
 
@@ -233,9 +248,7 @@ full list of available variables and their descriptions.
 | `make auth-codex` | Authenticate OpenAI Codex OAuth |
 | `make version` | Show pinned, running, and latest versions |
 | `make shell` | Open bash shell in the gateway container |
-| `make cli` | Open interactive OpenClaw CLI |
 | `make dashboard` | Auto-approve pending devices, print dashboard URL |
-| `make onboard` | Run onboarding wizard (LLM + integrations) |
 | `make config-preview` | Preview generated openclaw.json without Docker |
 | `make clean` | Remove dangling Docker images |
 | `make help` | Show all available commands |
@@ -255,7 +268,6 @@ crewdock/
 │   ├── gws.sh                     # Google Workspace credentials setup
 │   └── xurl.sh                    # X/Twitter API setup + validation
 ├── agents/                        # Agent templates (tracked in git)
-│   ├── overlord/                  # System admin agent
 │   ├── forge/                     # Dev autopilot agent
 │   ├── alfred/                    # Personal assistant agent
 │   ├── scouter/                   # Intel radar agent

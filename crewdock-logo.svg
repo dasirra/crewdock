@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Main gradient - deep purple to electric violet -->
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C3AED"/>
+      <stop offset="100%" style="stop-color:#4F46E5"/>
+    </linearGradient>
+    <!-- Claw highlight gradient -->
+    <linearGradient id="clawGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#A78BFA"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
+    </linearGradient>
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Subtle shadow -->
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#1E1B4B" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#0F0D1A"/>
+  <circle cx="256" cy="256" r="240" fill="none" stroke="url(#mainGrad)" stroke-width="4" opacity="0.6"/>
+
+  <!-- Inner ring - dock/port reference -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#7C3AED" stroke-width="1.5" opacity="0.2"/>
+
+  <!-- Hexagonal dock shape (background) -->
+  <polygon points="256,80 404,148 404,364 256,432 108,364 108,148"
+           fill="none" stroke="#7C3AED" stroke-width="1" opacity="0.15"/>
+
+  <!-- Central Claw Mark - 3 talon strokes forming a stylized "C" for Crew/Claw -->
+  <g filter="shadow" transform="translate(256,240)">
+    <!-- Top claw talon -->
+    <path d="M-10,-120 C-10,-120 -70,-85 -85,-30 C-92,-5 -85,10 -72,8 C-60,6 -55,-10 -50,-28 C-42,-55 -20,-75 -10,-80"
+          fill="url(#clawGrad)" opacity="0.95"/>
+
+    <!-- Middle claw talon (largest) -->
+    <path d="M0,-130 C0,-130 -5,-90 -5,-50 C-5,-10 -2,30 0,50 C2,30 5,-10 5,-50 C5,-90 0,-130 0,-130Z"
+          fill="url(#mainGrad)" opacity="0.95"/>
+
+    <!-- Right claw talon -->
+    <path d="M10,-120 C10,-120 70,-85 85,-30 C92,-5 85,10 72,8 C60,6 55,-10 50,-28 C42,-55 20,-75 10,-80"
+          fill="url(#clawGrad)" opacity="0.95"/>
+  </g>
+
+  <!-- Stylized anchor/dock crossbar -->
+  <g transform="translate(256,290)" filter="glow">
+    <line x1="-70" y1="0" x2="70" y2="0" stroke="#A78BFA" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+    <!-- Anchor point -->
+    <circle cx="0" cy="0" r="6" fill="#A78BFA" opacity="0.9"/>
+    <!-- Anchor flukes (small) -->
+    <path d="M0,0 L0,45" stroke="#A78BFA" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+    <path d="M-20,38 C-20,38 0,55 20,38" fill="none" stroke="#A78BFA" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  </g>
+
+  <!-- Four agent dots orbiting - representing the 4 agents -->
+  <!-- Overlord (top) -->
+  <circle cx="256" cy="76" r="8" fill="#F59E0B" opacity="0.9" filter="glow"/>
+  <!-- Forge (right) -->
+  <circle cx="424" cy="256" r="8" fill="#10B981" opacity="0.9" filter="glow"/>
+  <!-- Alfred (bottom) -->
+  <circle cx="256" cy="436" r="8" fill="#3B82F6" opacity="0.9" filter="glow"/>
+  <!-- Scouter (left) -->
+  <circle cx="88" cy="256" r="8" fill="#EF4444" opacity="0.9" filter="glow"/>
+
+  <!-- Connecting orbital lines between agents -->
+  <ellipse cx="256" cy="256" rx="168" ry="168" fill="none" stroke="#7C3AED" stroke-width="0.8" opacity="0.15"
+           stroke-dasharray="8,12"/>
+
+  <!-- CREWDOCK text -->
+  <text x="256" y="395" text-anchor="middle" font-family="'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="42" font-weight="700" letter-spacing="8" fill="#E0E0FF" opacity="0.9">
+    CREWDOCK
+  </text>
+
+  <!-- Subtle tagline -->
+  <text x="256" y="420" text-anchor="middle" font-family="'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="12" font-weight="400" letter-spacing="4" fill="#A78BFA" opacity="0.5">
+    POWERED BY OPENCLAW
+  </text>
+</svg>
