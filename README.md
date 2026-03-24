@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="brand/logo-horizontal.svg">
     <source media="(prefers-color-scheme: light)" srcset="brand/logo-horizontal-dark.svg">
-    <img alt="CrewDock" src="brand/logo-horizontal-dark.svg" width="420">
+    <img alt="CrewDock" src="brand/logo-horizontal-dark.svg" width="360">
   </picture>
 </p>
 
