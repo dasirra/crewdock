@@ -41,7 +41,7 @@ gum style \
   --padding "1 4" \
   --align center \
   --width 60 \
-  "OpenClaw NAS" \
+  "CrewDock" \
   "Installation Wizard"
 echo ""
 

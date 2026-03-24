@@ -149,7 +149,7 @@ approve 43 | edit 43 | discard 43 | retype 43 [type]
 
 ```json
 {
-  "timezone": "Europe/Madrid",
+  "timezone": "UTC",
   "sources": {
     "twitter": {
       "schedule": "twice-daily",

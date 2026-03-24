@@ -1,5 +1,5 @@
 {
-  "timezone": "Europe/Madrid",
+  "timezone": "UTC",
   "sources": {
     "twitter": {
       "schedule": "twice-daily",

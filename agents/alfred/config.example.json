@@ -1,5 +1,5 @@
 {
-  "timezone": "Europe/Madrid",
+  "timezone": "UTC",
   "briefing": {
     "enabled": false,
     "cron": "",

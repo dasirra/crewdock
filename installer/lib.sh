@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# installer/lib.sh — Shared helpers for the OpenClaw NAS installer
+# installer/lib.sh — Shared helpers for the CrewDock installer
 # Bash 3.2+ compatible: no associative arrays, no bash 4+ features
 
 # ---------------------------------------------------------------------------
