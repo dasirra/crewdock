@@ -1,11 +1,22 @@
-# CrewDock
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/logo-horizontal.svg">
+    <source media="(prefers-color-scheme: light)" srcset="brand/logo-horizontal-dark.svg">
+    <img alt="CrewDock" src="brand/logo-horizontal-dark.svg" width="420">
+  </picture>
+</p>
 
-A self-hosted AI crew that runs 24/7 on your server. Three specialized agents working autonomously in Docker, built on [OpenClaw](https://github.com/openclaw/openclaw).
+<p align="center">
+  A self-hosted AI crew that runs 24/7 on your server.<br>
+  Three specialized agents working autonomously in Docker, built on <a href="https://github.com/openclaw/openclaw">OpenClaw</a>.
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-required-blue?logo=docker)](https://www.docker.com/)
-[![OpenClaw](https://img.shields.io/badge/OpenClaw-2026.3.13--1-purple)](https://github.com/openclaw/openclaw)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/dasirra)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-required-blue?logo=docker" alt="Docker"></a>
+  <a href="https://github.com/openclaw/openclaw"><img src="https://img.shields.io/badge/OpenClaw-2026.3.13--1-purple" alt="OpenClaw"></a>
+  <a href="https://buymeacoffee.com/dasirra"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buymeacoffee" alt="Buy Me A Coffee"></a>
+</p>
 
 ## Architecture
 
