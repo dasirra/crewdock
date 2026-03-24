@@ -110,7 +110,7 @@ teardown() {
 
 @test "env_set: sets correct permissions" {
   env_set "MY_KEY" "my_value"
-  perms=$(stat -f "%Lp" "$TEST_TMPDIR/.env" 2>/dev/null || stat -c "%a" "$TEST_TMPDIR/.env" 2>/dev/null)
+  perms=$(stat -c "%a" "$TEST_TMPDIR/.env" 2>/dev/null || stat -f "%Lp" "$TEST_TMPDIR/.env" 2>/dev/null)
   [ "$perms" = "600" ]
 }
 
