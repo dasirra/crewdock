@@ -308,6 +308,12 @@ Copy `docker-compose.override.example.yaml` to `docker-compose.override.yaml`
 and add services. Docker Compose merges it automatically. Both files are
 gitignored so personal additions won't conflict with upstream updates.
 
+## Roadmap
+
+- [ ] **Tailscale sidecar** — secure remote access to the container without exposing ports
+- [ ] **Syncthing + Obsidian vault sync** — give agents access to your second brain
+- [ ] **New agents** — expand the crew with additional specialized agents
+
 ## License
 
 MIT
