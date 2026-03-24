@@ -21,6 +21,18 @@
 ## Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#7C3AED',
+  'primaryTextColor': '#E0E0FF',
+  'primaryBorderColor': '#4F46E5',
+  'lineColor': '#A78BFA',
+  'secondaryColor': '#4F46E5',
+  'tertiaryColor': '#1E1B4B',
+  'clusterBkg': '#1E1B4B',
+  'clusterBorder': '#4F46E5',
+  'edgeLabelBackground': '#1E1B4B',
+  'nodeTextColor': '#E0E0FF'
+}}}%%
 graph TB
     subgraph CrewDock ["CrewDock (Docker)"]
         GW[OpenClaw Gateway]
