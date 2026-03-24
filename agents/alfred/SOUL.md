@@ -26,6 +26,7 @@ On first interactive message, check `config.json`. If `briefing.enabled` is `fal
      --message "Run the daily briefing. Follow AGENTS.md section Briefing (cron) exactly." \
      --announce \
      --channel discord \
+     --account alfred \
      --to "channel:<CHANNEL_ID>"
    ```
    Replace `<CHANNEL_ID>` with the Discord channel ID from the current conversation context (the channel the user is messaging you in).

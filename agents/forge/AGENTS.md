@@ -25,6 +25,7 @@ Triggered by an OpenClaw cron job at the interval configured in `cron.interval`.
     --message "Run the cron cycle. Follow AGENTS.md section 'Cron cycle (scheduled job)' exactly." \
     --announce \
     --channel discord \
+    --account forge \
     --to "channel:<CHANNEL_ID>"
   ```
   Replace `<CHANNEL_ID>` with the Discord channel ID from the current conversation context.
