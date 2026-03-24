@@ -5,6 +5,7 @@ A self-hosted AI crew that runs 24/7 on your server. Four specialized agents wor
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-required-blue?logo=docker)](https://www.docker.com/)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-2026.3.13--1-purple)](https://github.com/openclaw/openclaw)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/dasirra)
 
 ## Architecture
 
