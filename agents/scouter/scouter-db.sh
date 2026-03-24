@@ -14,11 +14,13 @@ Commands:
   init                                              Create tables if not exist
   scan <source> <source_name> <hash> <url> <title>  Record scanned item, returns ID
   is-scanned <hash>                                 Check if hash processed (exit 0=yes, 1=no)
-  opportunity <scanned_item_id> <original> <draft>  Create opportunity (status: pending)
-  resolve <id> <status> [edited_text]               Mark approved/edited/discarded
-  pending                                           List pending opportunities
-  stats [days]                                      Approve/edit/discard rates (default: 30)
-  cleanup [days]                                    Delete scanned_items older than N days (default: 90)
+  opportunity <item_id> <original> <draft> [template]  Create opportunity (optional template type)
+  retype <id> <template>                               Change template type for pending opportunity
+  resolve <id> <status> [edited_text]                  Mark approved/edited/discarded
+  pending                                              List pending opportunities
+  stats [days]                                         Approve/edit/discard rates (default: 30)
+  cleanup [days]                                       Delete scanned_items older than N days (default: 90)
+  migrate                                              Add new columns to existing DB
   lock                                              Set scan lock
   unlock                                            Release scan lock
   is-locked                                         Check lock (exit 0=locked, 1=unlocked)
@@ -30,7 +32,9 @@ EOF
 
 db() { sqlite3 "$DB" "$@"; }
 
-esc() { printf '%s' "${1//\'/''}"; }
+# Escape single quotes for safe SQL interpolation: ' → ''
+# Uses sed for bash 3.2 compatibility (parameter expansion backslash handling differs)
+esc() { printf '%s' "$1" | sed "s/'/''/g"; }
 
 assert_int() {
   [[ "$1" =~ ^[0-9]+$ ]] || { echo "Error: expected integer, got '$1'" >&2; exit 1; }
@@ -63,6 +67,7 @@ CREATE TABLE IF NOT EXISTS opportunities (
     scanned_item_id INTEGER REFERENCES scanned_items(id) ON DELETE SET NULL,
     original_post TEXT NOT NULL,
     draft TEXT NOT NULL,
+    template TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
     edited_text TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -71,6 +76,16 @@ CREATE TABLE IF NOT EXISTS opportunities (
 CREATE INDEX IF NOT EXISTS idx_opp_status ON opportunities(status);
 SQL
   echo "DB initialized: $DB"
+  cmd_migrate
+}
+
+cmd_migrate() {
+  local has_template
+  has_template=$(db "SELECT COUNT(*) FROM pragma_table_info('opportunities') WHERE name='template';")
+  if [[ "$has_template" == "0" ]]; then
+    db "ALTER TABLE opportunities ADD COLUMN template TEXT;"
+    echo "Migrated: added template column to opportunities."
+  fi
 }
 
 cmd_scan() {
@@ -93,7 +108,13 @@ cmd_opportunity() {
   local item_id="$1"; assert_int "$item_id"
   local original; original=$(esc "$2")
   local draft; draft=$(esc "$3")
-  db "INSERT INTO opportunities (scanned_item_id, original_post, draft) VALUES ($item_id, '$original', '$draft'); SELECT last_insert_rowid();"
+  local template="${4:-}"
+  if [[ -n "$template" ]]; then
+    template=$(esc "$template")
+    db "INSERT INTO opportunities (scanned_item_id, original_post, draft, template) VALUES ($item_id, '$original', '$draft', '$template'); SELECT last_insert_rowid();"
+  else
+    db "INSERT INTO opportunities (scanned_item_id, original_post, draft) VALUES ($item_id, '$original', '$draft'); SELECT last_insert_rowid();"
+  fi
 }
 
 cmd_resolve() {
@@ -111,8 +132,20 @@ cmd_resolve() {
   fi
 }
 
+cmd_retype() {
+  local id="$1"; assert_int "$id"
+  local template; template=$(esc "$2")
+  local current_status
+  current_status=$(db "SELECT status FROM opportunities WHERE id=$id;")
+  if [[ "$current_status" != "pending" ]]; then
+    echo "Error: opportunity $id is '$current_status', not 'pending'" >&2; exit 1
+  fi
+  db "UPDATE opportunities SET template='$template' WHERE id=$id;"
+  echo "Opportunity $id retyped to: $template"
+}
+
 cmd_pending() {
-  db -column -header "SELECT o.id, o.original_post, o.draft, o.created_at, s.source, s.url
+  db -column -header "SELECT o.id, o.template, o.original_post, o.draft, o.created_at, s.source, s.url
       FROM opportunities o
       LEFT JOIN scanned_items s ON o.scanned_item_id = s.id
       WHERE o.status='pending'
@@ -189,11 +222,13 @@ case "$COMMAND" in
   init)          cmd_init ;;
   scan)          if [[ $# -ge 5 ]]; then cmd_scan "$1" "$2" "$3" "$4" "$5"; else usage; fi ;;
   is-scanned)    if [[ $# -ge 1 ]]; then cmd_is_scanned "$1"; else usage; fi ;;
-  opportunity)   if [[ $# -ge 3 ]]; then cmd_opportunity "$1" "$2" "$3"; else usage; fi ;;
+  opportunity)   if [[ $# -ge 3 ]]; then cmd_opportunity "$@"; else usage; fi ;;
   resolve)       if [[ $# -ge 2 ]]; then cmd_resolve "$@"; else usage; fi ;;
   pending)       cmd_pending ;;
   stats)         cmd_stats "${1:-30}" ;;
   cleanup)       cmd_cleanup "${1:-90}" ;;
+  migrate)       cmd_migrate ;;
+  retype)        if [[ $# -ge 2 ]]; then cmd_retype "$1" "$2"; else usage; fi ;;
   lock)          cmd_lock ;;
   unlock)        cmd_unlock ;;
   is-locked)     cmd_is_locked ;;

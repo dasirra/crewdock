@@ -2,13 +2,11 @@
   "timezone": "Europe/Madrid",
   "sources": {
     "twitter": {
-      "schedule": "every-30m",
-      "lists": ["ai-leaders"],
-      "keywords": ["new LLM", "open source AI", "AI agent"],
-      "mentions": true
+      "schedule": "twice-daily",
+      "list_id": "YOUR_X_LIST_ID",
+      "max_results": 10
     },
     "rss": [
-      { "name": "Anthropic Blog", "url": "https://www.anthropic.com/rss.xml", "schedule": "twice-daily" },
       { "name": "HackerNews Best", "url": "https://hnrss.org/best", "schedule": "every-4h" }
     ],
     "web": [

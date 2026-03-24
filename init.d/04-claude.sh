@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 07-claude.sh — Claude CLI settings, commands, and plugins
+# 04-claude.sh -- Claude CLI settings, commands, and plugins
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 # Auth is handled by CLAUDE_CODE_OAUTH_TOKEN env var (no setup needed).
 

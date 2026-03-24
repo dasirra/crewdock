@@ -3,6 +3,7 @@
   "briefing": {
     "enabled": false,
     "cron": "",
+    "jobId": "",
     "sections": ["calendar", "email", "tasks", "reminders"]
   },
   "confirmation": {

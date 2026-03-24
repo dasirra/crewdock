@@ -1,13 +1,14 @@
 # Secrets
 .env
+credentials.json
 
-# Runtime data (created by setup.sh)
+# Runtime data (created by make setup)
+home/
+
+# Legacy dirs (pre-restructure)
 config/
 workspace/
 projects/
-.claude/
-
-# Legacy config dirs (pre-restructure)
 claude-config/
 gws-config/
 syncthing-config/
@@ -18,6 +19,7 @@ tailscale-serve.json
 # Personal overrides
 docker-compose.override.yaml
 Dockerfile.local
+**/USER.md
 
 # Superpowers specs and plans (local only)
 docs/superpowers/

@@ -1,5 +1,10 @@
 {
   "timezone": "Europe/Madrid",
+  "cron": {
+    "enabled": false,
+    "interval": "*/15 * * * *",
+    "jobId": ""
+  },
   "defaults": {
     "branch": "develop",
     "agentId": "claude",

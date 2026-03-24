@@ -3,4 +3,6 @@
 # One pattern per line. Blank lines and #-comments are ignored.
 config.json
 USER.md
+MEMORY.md
+memory/
 *.db

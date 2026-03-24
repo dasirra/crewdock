@@ -1,16 +1,13 @@
 ARG OPENCLAW_VERSION=latest
-FROM alpine/openclaw:${OPENCLAW_VERSION}
+FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 
 USER root
 
-# Core tools
+# Extra tools (procps, curl, git, openssl already in base image)
 RUN apt-get update && apt-get install -y \
     cron \
     jq \
-    procps \
-    curl \
     gnupg \
-    git \
     build-essential \
     python3 \
     python3-pip \
@@ -19,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     libglu1-mesa \
     sqlite3 \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # GitHub CLI
@@ -51,18 +49,12 @@ COPY --chown=node:node init.d/ /usr/local/lib/openclaw-init.d/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && chmod +x /usr/local/lib/openclaw-init.d/*.sh
 
-# Ensure home is owned by node
-RUN mkdir -p /home/node/projects \
-    && chown -R node:node /home/node
+# Ensure home is owned by node + compile cache for low-power hosts
+RUN mkdir -p /var/tmp/openclaw-compile-cache \
+    && chown -R node:node /home/node /var/tmp/openclaw-compile-cache
 
-USER node
 ENV PATH="/home/node/.local/bin:${PATH}"
 
-# Claude Code CLI
-RUN curl -fsSL https://claude.ai/install.sh | bash
-
-# Google Workspace agent skills
-RUN npx -y skills add https://github.com/googleworkspace/cli -y
-
+# Entrypoint runs as root to fix volume permissions, then drops to node
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "dist/index.js", "gateway", "--allow-unconfigured"]

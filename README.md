@@ -1,81 +1,94 @@
-# OpenClaw
+# CrewDock
 
-A self-hosted personal AI assistant that runs 24/7 on your server. Built on [OpenClaw](https://github.com/nicholasgriffintn/openclaw) with addon agents for autonomous workflows.
+A self-hosted AI crew that runs 24/7 on your server. Four specialized agents working autonomously in Docker, built on [OpenClaw](https://github.com/openclaw/openclaw).
 
-## What's Included
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-required-blue?logo=docker)](https://www.docker.com/)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-2026.3.13--1-purple)](https://github.com/openclaw/openclaw)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/dasirra)
 
-- **OpenClaw Gateway** — always-on LLM agent with Telegram, Google Workspace, and other integrations
-- **Forge** — autonomous development agent that picks up GitHub issues, writes code, and opens PRs using Claude
+## Architecture
 
-## Prerequisites
+```mermaid
+graph TB
+    subgraph CrewDock ["CrewDock (Docker)"]
+        GW[OpenClaw Gateway]
 
-- Docker and Docker Compose
-- An [Anthropic API key](https://console.anthropic.com/) (`ANTHROPIC_API_KEY`)
-- A [GitHub personal access token](https://github.com/settings/tokens) (`GITHUB_TOKEN`) — for Forge
+        GW --> Overlord["Overlord<br/><i>System Admin</i>"]
+        GW --> Forge["Forge<br/><i>Dev Autopilot</i>"]
+        GW --> Alfred["Alfred<br/><i>Personal Assistant</i>"]
+        GW --> Scouter["Scouter<br/><i>Intel Radar</i>"]
+    end
 
-## Installation
+    Overlord -.-> |config management| GW
+    Forge --> |worktrees + PRs| GitHub
+    Alfred --> |read/write| Google["Google Workspace"]
+    Scouter --> |monitor| Sources["RSS / Twitter / Web"]
 
-### Step 1: Clone and run setup
-
-```bash
-git clone https://github.com/dasirra/openclaw-nas.git openclaw
-cd openclaw
-make setup
+    Discord <--> GW
 ```
 
-This creates `.env` (with a generated gateway token), runtime directories, and installs the bundled agents.
+## What is CrewDock
 
-### Step 2: Set your API keys
+CrewDock turns a Docker host into a 24/7 AI operations center. It runs
+[OpenClaw](https://github.com/openclaw/openclaw) as the gateway, adds four
+specialized agents, and wires everything to Discord so you can monitor and
+interact from your phone.
 
-```bash
-nano .env
-```
+The agents run on cron schedules or on demand. Each one has its own workspace,
+config, and database. You deploy once and they take it from there.
 
-Fill in `ANTHROPIC_API_KEY` and `GITHUB_TOKEN`.
+## The Agents
 
-### Step 3: Build and start
+### Overlord — System Admin
 
-```bash
-make up
-```
+Manages agent configuration through the OpenClaw control UI (dashboard).
+Adjusts heartbeat schedules, cron jobs, channel bindings, and enabled state for the
+other agents. No cron, no Discord channel. Access it via `make dashboard`.
 
-This builds the Docker image and starts the gateway.
+### Alfred — Personal Assistant
 
-### Step 4: Run OpenClaw onboarding
+Daily briefings and Google Workspace access (Gmail, Calendar, Tasks) via
+Discord. On first message, Alfred walks you through setting your briefing
+schedule. After that, it delivers a morning summary on cron and answers
+workspace queries on demand.
 
-```bash
-make onboard
-```
+### Forge — Dev Autopilot
 
-The onboarding wizard walks you through:
-- LLM provider authentication (Anthropic)
-- Telegram bot setup (optional — for chatting with your assistant)
-- Discord bot setup (optional)
+Autonomous development agent. Picks up GitHub issues, writes code, and
+opens PRs. Forge uses OpenClaw's [ACP](https://docs.openclaw.ai/acp)
+(Agent Communication Protocol) to spawn isolated coding sessions that run
+Claude CLI (`acpx`) inside the container. Each session gets its own
+worktree, runs autonomously, and reports results back to Discord.
 
-### Step 5: Authenticate Claude Code
+**How it works:**
 
-Forge uses the Claude CLI to spawn autonomous coding sessions. It needs its own auth:
+1. A cron job fires on a configurable interval (default every 15m, disabled on first boot)
+2. Forge checks which repos are due based on their schedule
+3. For each repo, it fetches open issues (oldest first)
+4. Filters out issues with active sessions, existing PRs, or exclude labels
+5. Spawns an ACP session per issue (up to max concurrent) that invokes Claude CLI
+6. Each session: reads the issue, creates a worktree, implements, tests, opens a PR
+7. Results are announced on Discord
 
-```bash
-make shell
-claude
-```
-
-This opens the Claude CLI auth flow inside the container. Follow the prompts, then exit.
-
-### Step 6: Configure Forge
-
-Edit `workspace/agents/forge/config.json` with your GitHub repos:
+**Config example** (`config.json`):
 
 ```json
 {
   "timezone": "America/New_York",
+  "cron": {
+    "enabled": false,
+    "interval": "*/15 * * * *",
+    "jobId": ""
+  },
   "defaults": {
+    "branch": "main",
     "agentId": "claude",
     "model": null,
     "schedule": "on-demand",
     "thread": true,
-    "maxConcurrentSessions": 4
+    "maxConcurrentSessions": 4,
+    "maxAttempts": 3
   },
   "projects": [
     {
@@ -86,152 +99,186 @@ Edit `workspace/agents/forge/config.json` with your GitHub repos:
 }
 ```
 
-Projects inherit from `defaults` — only `repo` and `branch` are required. Then trigger Forge via Telegram (`run your-repo`) or set a schedule.
+Projects inherit from `defaults` — only `repo` is required.
 
-## Configuration
-
-### Environment Variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude |
-| `GITHUB_TOKEN` | Yes | GitHub PAT for Forge and `gh` CLI |
-| `OPENCLAW_GATEWAY_TOKEN` | Auto | Gateway auth token (generated by setup) |
-| `GIT_AUTHOR_NAME` | No | Git commit author name (default: `Claude Dev`) |
-| `GIT_AUTHOR_EMAIL` | No | Git commit author email (default: `claude-dev@localhost`) |
-
-### Forge Global Defaults
-
-Set in `config.json` under `defaults`. Projects inherit these unless overridden.
-
-| Setting | Default | Description |
-|---|---|---|
-| `agentId` | `"claude"` | ACP agent for sessions |
-| `model` | `null` | Model override (`null` = agent's default) |
-| `schedule` | `"on-demand"` | Default schedule for new projects |
-| `thread` | `true` | Create a thread per session |
-| `maxConcurrentSessions` | `4` | Max active autopilot sessions globally |
-
-### Forge Schedules
+**Schedules:**
 
 | Schedule | Behavior |
 |---|---|
 | `on-demand` | Manual trigger only |
-| `always` | Every 15-minute cron cycle |
+| `always` | Every cron cycle |
 | `HH-HH` | Hour range (e.g., `22-07` wraps midnight) |
-| `HH-HH weekdays` | Hour range, Monday–Friday only |
-| `HH-HH weekends` | Hour range, Saturday–Sunday only |
+| `HH-HH weekdays` | Monday–Friday only |
+| `HH-HH weekends` | Saturday–Sunday only |
 
-### Forge Project Options
+**Global defaults:**
 
-Per-project overrides. Only `repo` and `branch` are required — everything else inherits from defaults.
+| Setting | Default | Description |
+|---|---|---|
+| `branch` | `"main"` | Base branch for new worktrees |
+| `agentId` | `"claude"` | ACP agent for sessions |
+| `model` | `null` | Model override (`null` = agent default) |
+| `schedule` | `"on-demand"` | Default schedule for projects |
+| `thread` | `true` | Create a Discord thread per session |
+| `maxConcurrentSessions` | `4` | Max active autopilot sessions globally |
+| `maxAttempts` | `3` | Max retry attempts per issue |
+| `cron.interval` | `"*/15 * * * *"` | Cron schedule when enabled |
+
+**Project options:**
 
 | Field | Required | Description |
 |---|---|---|
 | `repo` | Yes | GitHub repo (`owner/name`) |
-| `branch` | Yes | Base branch to work from |
+| `branch` | No | Override default branch |
 | `agentId` | No | Override default agent |
 | `model` | No | Override default model |
 | `schedule` | No | Override default schedule |
 | `thread` | No | Override default thread setting |
 | `enabled` | No | Toggle on/off (default: `true`) |
 | `excludeLabels` | No | Issue labels to skip |
-| `testCommand` | No | Custom test command (default: auto-detect) |
+| `testCommand` | No | Custom test command |
 | `setupInstructions` | No | Run before each session |
+
+### Scouter — Intel Radar
+
+Monitors AI/tech sources (RSS, Twitter/X, web pages) and drafts engagement
+posts in your voice for Twitter/X. Never publishes automatically — all
+drafts go through you on Discord.
+
+**Sources config** (`config.json`):
+
+```json
+{
+  "timezone": "America/New_York",
+  "sources": {
+    "twitter": {
+      "schedule": "twice-daily",
+      "list_id": "YOUR_X_LIST_ID",
+      "max_results": 10
+    },
+    "rss": [
+      { "name": "HackerNews Best", "url": "https://hnrss.org/best", "schedule": "every-4h" }
+    ],
+    "web": [
+      { "name": "GitHub Trending", "url": "https://github.com/trending", "schedule": "daily-at-10" }
+    ]
+  }
+}
+```
+
+Comes with 8 post templates: build logs, library reviews, news commentary,
+original takes, quote tweets, replies, resource shares, and threads.
+
+## Prerequisites
+
+- [Docker](https://www.docker.com/) and Docker Compose
+- `curl` and `jq` (used by the install wizard)
+
+The install wizard walks you through everything else: Discord bots, GitHub
+tokens, Claude credentials, and optional integrations. It validates each
+credential before saving.
+
+## Installation
+
+```bash
+git clone https://github.com/dasirra/crewdock.git
+cd crewdock
+./install.sh
+```
+
+The wizard will:
+
+1. Install [gum](https://github.com/charmbracelet/gum) (TUI framework) if not present
+2. Let you pick which agents to enable
+3. Walk you through each integration (Discord, GitHub, Claude, Google Workspace, X/Twitter)
+4. Validate credentials against their APIs in real time
+5. Generate your `.env` and create runtime directories
+6. Offer to start the container (`make up`) and authenticate an LLM provider (`make auth`)
+
+**Power user alternative:** skip the wizard entirely.
+
+```bash
+cp .env.example .env
+vim .env        # fill in your values
+make up
+make auth       # authenticate an LLM provider
+```
+
+### Reconfiguring
+
+Run `./install.sh` again at any time to add agents, change tokens, or update
+integrations. The wizard detects your existing `.env` and lets you modify it.
+
+## Configuration
+
+### Environment Variables
+
+The install wizard generates `.env` for you. For manual setup, copy
+`.env.example` to `.env` and fill in your values. See `.env.example` for the
+full list of available variables and their descriptions.
 
 ## Commands
 
+| Command | Description |
+|---|---|
+| `make up` | Build and start all services |
+| `make down` | Stop all services |
+| `make restart` | Restart all services |
+| `make restart-gateway` | Restart only the gateway |
+| `make logs` | Tail gateway logs |
+| `make logs-all` | Tail all service logs |
+| `make status` | Show running containers |
+| `make auth` | Authenticate an LLM provider (interactive selector) |
+| `make auth-anthropic` | Authenticate Anthropic OAuth |
+| `make auth-codex` | Authenticate OpenAI Codex OAuth |
+| `make version` | Show pinned, running, and latest versions |
+| `make shell` | Open bash shell in the gateway container |
+| `make cli` | Open interactive OpenClaw CLI |
+| `make dashboard` | Auto-approve pending devices, print dashboard URL |
+| `make onboard` | Run onboarding wizard (LLM + integrations) |
+| `make config-preview` | Preview generated openclaw.json without Docker |
+| `make clean` | Remove dangling Docker images |
+| `make help` | Show all available commands |
+
+## Project Structure
+
 ```
-make setup             # First-time setup
-make up                # Start services
-make down              # Stop services
-make restart           # Restart services
-make logs              # Tail gateway logs
-make status            # Show running containers
-make shell             # Shell into the gateway container
-make cli               # Open interactive CLI
-make onboard           # Run onboarding (auth setup)
-make update            # Pull latest image, rebuild, restart
-make clean             # Remove dangling Docker images
+crewdock/
+├── install.sh                     # TUI installation wizard
+├── installer/                     # Wizard modules
+│   ├── manifest.json              # Agent and integration definitions
+│   ├── lib.sh                     # Shared helpers (output, env, gum wrappers)
+│   ├── gum.sh                     # Gum detection and auto-install
+│   ├── discord.sh                 # Discord bot setup + validation
+│   ├── github.sh                  # GitHub PAT setup + validation
+│   ├── claude.sh                  # Claude OAuth token setup
+│   ├── gws.sh                     # Google Workspace credentials setup
+│   └── xurl.sh                    # X/Twitter API setup + validation
+├── agents/                        # Agent templates (tracked in git)
+│   ├── overlord/                  # System admin agent
+│   ├── forge/                     # Dev autopilot agent
+│   ├── alfred/                    # Personal assistant agent
+│   ├── scouter/                   # Intel radar agent
+│   ├── USER.md                    # User profile shared across agents (gitignored)
+│   └── USER.example.md
+├── claude/                        # Claude CLI commands
+├── init.d/                        # Boot scripts (run on container start)
+├── home/                          # Persistent /home/node volume (gitignored)
+│   ├── .openclaw/                 # Gateway config + agent workspaces
+│   ├── .claude/                   # Claude CLI config
+│   └── .config/                   # gh, gws, xurl credentials
+├── docker-compose.yaml            # Core service definition
+├── docker-compose.override.yaml   # Personal additions (gitignored)
+├── Dockerfile                     # Base image + core tools
+├── Dockerfile.local               # Personal tool additions (gitignored)
+├── docker-entrypoint.sh           # Container entrypoint
+├── Makefile                       # Build and management commands
+└── .openclaw-version              # Pinned OpenClaw base image version
 ```
-
-## Architecture
-
-```
-openclaw/
-├── agents/                      # Agent templates (tracked in git)
-│   └── forge/                   # Forge agent definition
-├── config/                      # All runtime config (gitignored)
-│   ├── openclaw/                # OpenClaw gateway config
-│   ├── claude/                  # Claude CLI config
-│   ├── gws/                     # Google Workspace (optional)
-│   └── syncthing/               # Syncthing (optional)
-├── workspace/                   # Runtime agent data (gitignored)
-│   └── agents/                  # Installed agents (copied from agents/)
-├── projects/                    # Cloned repos for Forge (gitignored)
-├── docker-compose.yaml          # Core services
-├── docker-compose.override.yaml # Personal additions (gitignored)
-├── Dockerfile                   # Base image + core tools
-└── setup.sh                     # Setup script
-```
-
-## Remote Access
-
-By default, the gateway binds to localhost. Choose the access level that fits your setup:
-
-| Access | How | Use case |
-|---|---|---|
-| **Local only** | Default — no changes needed | Desktop, SSH access |
-| **LAN** | Set `gateway.bind` to `0.0.0.0` in OpenClaw config | NAS on home network |
-| **Remote (Tailscale)** | See below | Secure access from anywhere |
-
-### Tailscale Setup
-
-[Tailscale](https://tailscale.com/) lets you access the gateway securely from anywhere without opening ports. It uses Tailscale Serve to proxy HTTPS traffic to the gateway.
-
-**Prerequisites:** Tailscale must be running on the host machine.
-
-1. Install the Tailscale CLI in the container. In your `Dockerfile.local`:
-
-   ```dockerfile
-   RUN mkdir -p /usr/share/keyrings \
-       && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null \
-       && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list \
-       && apt-get update && apt-get install -y tailscale \
-       && rm -rf /var/lib/apt/lists/*
-   ```
-
-2. Mount the host's Tailscale socket. In your `docker-compose.override.yaml`:
-
-   ```yaml
-   services:
-     openclaw-gateway:
-       volumes:
-         - /var/run/tailscale:/var/run/tailscale:ro
-   ```
-
-3. Copy and customize the Tailscale Serve config:
-
-   ```bash
-   cp tailscale-serve.example.json tailscale-serve.json
-   ```
-
-   This proxies `https://<your-tailscale-node>:443` → `http://127.0.0.1:18789`.
-
-4. Configure the gateway to use Tailscale Serve. In `config/openclaw/openclaw.json`, set:
-
-   ```json
-   {
-     "gateway": {
-       "auth": { "allowTailscale": true },
-       "tailscale": { "mode": "serve" }
-     }
-   }
-   ```
 
 ## Extending
 
-### Custom Dockerfile
+### Custom Tools
 
 Copy `Dockerfile.local.example` to `Dockerfile.local` and add your own tools:
 
@@ -245,17 +292,9 @@ USER node
 
 ### Additional Services
 
-Copy `docker-compose.override.example.yaml` to `docker-compose.override.yaml` and add services like Syncthing or other tools. Docker Compose merges it automatically. Both files are gitignored so personal additions won't conflict with upstream updates.
-
-## How Forge Works
-
-1. A cron job fires every 15 minutes
-2. Forge reads `config.json` and checks which repos are due
-3. For each matching repo, it fetches open GitHub issues (oldest first)
-4. It filters out issues that already have PRs or active sessions
-5. It spawns a Claude coding session per issue (up to 4 concurrent)
-6. Each session: reads the issue, creates a worktree, plans, implements, tests, opens a PR
-7. Results are announced on your configured channel (Telegram/Discord)
+Copy `docker-compose.override.example.yaml` to `docker-compose.override.yaml`
+and add services. Docker Compose merges it automatically. Both files are
+gitignored so personal additions won't conflict with upstream updates.
 
 ## License
 

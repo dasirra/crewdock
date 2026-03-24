@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# 04-agents.sh — Install new agents or sync definition files for existing ones
+# 03-agents.sh -- Install new agents or sync definition files for existing ones
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
+#
+# Agent registration and scheduling config are handled by 02-config.sh.
+# This script only manages workspace files (templates, configs, databases).
 
 AGENT_TEMPLATES="/opt/openclaw-agents"
 WORKSPACE="$HOME/.openclaw/workspace"
@@ -8,15 +11,17 @@ WORKSPACE="$HOME/.openclaw/workspace"
 for agent_dir in "$AGENT_TEMPLATES"/*/; do
     [ -d "$agent_dir" ] || continue
     agent_name=$(basename "$agent_dir")
-    target="$WORKSPACE/agents/$agent_name"
+
+    # Overlord template installs into the pre-registered "main" agent workspace
+    if [ "$agent_name" = "overlord" ]; then
+        target="$WORKSPACE/agents/main"
+    else
+        target="$WORKSPACE/agents/$agent_name"
+    fi
 
     if [ ! -d "$target" ]; then
-        # --- New agent: full install ---
+        # --- New agent: install workspace files ---
         log "Installing agent '$agent_name'..."
-
-        if ! node dist/index.js agents add "$agent_name" --workspace "$target" --non-interactive 2>/dev/null; then
-            log "WARNING: 'agents add' failed for $agent_name (may already be registered). Continuing."
-        fi
 
         mkdir -p "$target"
         cp -r "$agent_dir"* "$target/"
@@ -32,23 +37,6 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
         if [ -f "$target/config.json" ]; then
             jq '.projects = []' "$target/config.json" > "$target/config.json.tmp" \
                 && mv "$target/config.json.tmp" "$target/config.json"
-        fi
-
-        # Configure heartbeat target if agent has a Discord channel
-        UPPER=$(echo "$agent_name" | tr '[:lower:]' '[:upper:]')
-        CHANNEL_VAR="DISCORD_${UPPER}_CHANNEL"
-        CHANNEL="${!CHANNEL_VAR:-}"
-        if [ -n "$CHANNEL" ]; then
-            AGENT_INDEX=$(node dist/index.js config get agents.list 2>/dev/null \
-                | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(d.findIndex(a=>a.id==='$agent_name'))" 2>/dev/null)
-            if [ -n "$AGENT_INDEX" ] && [ "$AGENT_INDEX" != "-1" ]; then
-                log "Configuring heartbeat for $agent_name (index: $AGENT_INDEX, channel: $CHANNEL)..."
-                node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.every" '"0m"' --json
-                node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.target" '"discord"' --json
-                node dist/index.js config set "agents.list[$AGENT_INDEX].heartbeat.to" "\"channel:$CHANNEL\"" --json
-            else
-                log "WARNING: could not find agent index for $agent_name, skipping heartbeat config"
-            fi
         fi
 
         log "Installed $agent_name."
@@ -75,17 +63,38 @@ for agent_dir in "$AGENT_TEMPLATES"/*/; do
                 [[ "$filename" == $pattern ]] && skip=true && break
             done
             if [ "$skip" = true ]; then
-                log "  Protected: $filename"
+                if [ ! -e "$target/$filename" ]; then
+                    cp -r "$src_file" "$target/$filename"
+                    log "  Seeded: $filename"
+                else
+                    log "  Protected: $filename"
+                fi
                 continue
             fi
 
-            cp "$src_file" "$target/$filename"
+            cp -r "$src_file" "$target/$filename"
             log "  Synced: $filename"
         done
 
         log "Synced $agent_name."
     fi
 done
+
+# Shared USER.md: install once, copy into each agent
+# (symlinks cause "outside its configured root" warnings from OpenClaw skill loader)
+if [ -f "$AGENT_TEMPLATES/USER.example.md" ] && [ ! -f "$WORKSPACE/agents/USER.md" ]; then
+    cp "$AGENT_TEMPLATES/USER.example.md" "$WORKSPACE/agents/USER.md"
+    log "Installed shared USER.md (edit to configure your voice profile)."
+fi
+if [ -f "$WORKSPACE/agents/USER.md" ]; then
+    for agent_dir in "$WORKSPACE"/agents/*/; do
+        [ -d "$agent_dir" ] || continue
+        target="$agent_dir/USER.md"
+        [ -L "$target" ] && rm "$target"  # replace old symlink with copy
+        cp "$WORKSPACE/agents/USER.md" "$target"
+        log "Copied USER.md -> $(basename "$agent_dir")/"
+    done
+fi
 
 # Initialize agent databases (idempotent: CREATE TABLE IF NOT EXISTS)
 for db_script in "$WORKSPACE"/agents/*/*-db.sh; do

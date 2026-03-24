@@ -2,9 +2,9 @@
 
 ## Two modes of operation
 
-### 1. Cron cycle (heartbeat)
+### 1. Cron cycle (scheduled job)
 
-On each heartbeat tick:
+Triggered by an OpenClaw cron job at the interval configured in `cron.interval`. On each trigger:
 
 1. Read `config.json`.
 2. Check global concurrency: count active `autopilot-*` sessions via `sessions_list`. If `defaults.maxConcurrentSessions` reached, skip this cycle.
@@ -14,9 +14,24 @@ On each heartbeat tick:
 
 ### 2. Interactive (messages from the user)
 
-**Heartbeat control:**
-- "start" — set `agents.list[].heartbeat.every` to `"15m"` in `openclaw.json` via `config set`
-- "stop" — set `heartbeat.every` to `"0m"`
+**Cron control:**
+- "enable" — create the cron job using `cron.interval` from `config.json` (default `*/15 * * * *`):
+  ```
+  openclaw cron add \
+    --name "Forge cron cycle" \
+    --cron "<cron.interval>" \
+    --tz "<timezone from config.json>" \
+    --session isolated \
+    --message "Run the cron cycle. Follow AGENTS.md section 'Cron cycle (scheduled job)' exactly." \
+    --announce \
+    --channel discord \
+    --account forge \
+    --to "channel:<CHANNEL_ID>"
+  ```
+  Replace `<CHANNEL_ID>` with the Discord channel ID from the current conversation context.
+  Save the returned job ID to `cron.jobId` in `config.json` and set `cron.enabled` to `true`.
+- "disable" — delete the cron job: `openclaw cron delete <cron.jobId>`. Set `cron.enabled` to `false` and clear `cron.jobId` in `config.json`.
+- "set interval `<cron-expr>`" — update `cron.interval` in `config.json`. If currently enabled, edit the existing job: `openclaw cron edit <cron.jobId> --cron "<cron-expr>"`
 
 **Triggering:**
 - "run `<repo>`" — run issue selection and spawn sessions immediately, regardless of schedule
@@ -55,7 +70,7 @@ For any command, `<repo>` can be just the repo name (e.g., `my-app`) or full `ow
 ## Schedule format
 
 - `on-demand` — only runs when manually triggered
-- `always` — runs on every heartbeat
+- `always` — runs on every cron cycle
 - `HH-HH` — active during this hour range (e.g., `22-07` wraps around midnight)
 - `HH-HH weekdays` — Monday through Friday only
 - `HH-HH weekends` — Saturday and Sunday only
@@ -83,7 +98,7 @@ Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and sessi
    - **Open PRs** — skip issues that already have an open PR (check branch names via `gh pr list`)
    - **Active sessions** — skip issues with an active ACP session (match `autopilot-<repo>-<number>` labels via `sessions_list`)
 
-4. Select the single oldest eligible issue. Only one issue is spawned per heartbeat cycle.
+4. Select the single oldest eligible issue. Only one issue is spawned per cron cycle.
 
 ## Spawning ACP sessions
 
@@ -91,7 +106,7 @@ For each selected issue:
 
 1. Read `autopilot-template.md` from your workspace and replace placeholders:
    - `{{repo}}`, `{{branch}}`, `{{issueNumber}}`, `{{issueTitle}}`
-   - `{{projectDir}}` — `/home/node/projects/<repo-name>`
+   - `{{projectDir}}` — `/home/node/.openclaw/workspace/agents/forge/projects/<repo-name>`
    - `{{setupInstructions}}` — project `setupInstructions` if set, otherwise remove the line
 2. Spawn via `sessions_spawn`:
    - `task`: the interpolated template
@@ -100,7 +115,7 @@ For each selected issue:
    - `mode`: `"session"`
    - `thread`: project `thread` > `defaults.thread` > `true`
    - `label`: `"autopilot-<repo-name>-<issue-number>"`
-   - `cwd`: `"/home/node/projects/<repo-name>"`
+   - `cwd`: `"/home/node/.openclaw/workspace/agents/forge/projects/<repo-name>"`
 3. Stop spawning if `defaults.maxConcurrentSessions` is reached.
 
 The ACP session handles its full lifecycle autonomously (DB tracking, build, cleanup, session stop) as defined in `autopilot-template.md`. Forge does not manage spawned sessions after launch.
@@ -119,6 +134,7 @@ Every setting resolves: project-level > `defaults` block > built-in fallback.
 | `maxConcurrentSessions` | `4` |
 | `maxAttempts` | `3` |
 | `enabled` | `true` |
+| `cron.interval` | `"*/15 * * * *"` |
 
 ## SQLite tracking
 
