@@ -26,43 +26,6 @@ if [ ! -f "$MANIFEST" ]; then
   exit 1
 fi
 
-# --- Helper: integration status ---
-# _integration_status AGENT_ID INTEGRATION_KEY — returns "configured" or "not configured"
-_integration_status() {
-  local agent_id="$1"
-  local intg="$2"
-  local agent_upper
-  agent_upper=$(echo "$agent_id" | tr '[:lower:]' '[:upper:]')
-  case "$intg" in
-    discord)
-      local token
-      token=$(env_get "DISCORD_${agent_upper}_TOKEN")
-      [ -n "$token" ] && echo "configured" || echo "not configured"
-      ;;
-    github)
-      local token
-      token=$(env_get "GH_TOKEN")
-      [ -n "$token" ] && echo "configured" || echo "not configured"
-      ;;
-    claude)
-      local token
-      token=$(env_get "CLAUDE_CODE_OAUTH_TOKEN")
-      [ -n "$token" ] && echo "configured" || echo "not configured"
-      ;;
-    gws)
-      [ -f "$SCRIPT_DIR/home/.config/gws/credentials.json" ] && echo "configured" || echo "not configured"
-      ;;
-    xurl)
-      local token
-      token=$(env_get "X_BEARER_TOKEN")
-      [ -n "$token" ] && echo "configured" || echo "not configured"
-      ;;
-    *)
-      echo "not configured"
-      ;;
-  esac
-}
-
 # --- Helper: git identity prompts ---
 _run_git_identity() {
   print_header "Git Identity"
@@ -168,7 +131,7 @@ if [ "$RECONFIG" -eq 1 ]; then
 
       # Strip " (status)" suffix to get the label
       local label
-      label=$(echo "$choice" | sed 's/ ([^)]*)$//')
+      label=$(echo "$choice" | sed -E 's/ \([^)]*\)$//')
       case "$label" in
         "Git Identity")
           _run_git_identity

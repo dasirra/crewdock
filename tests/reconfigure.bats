@@ -10,44 +10,6 @@ setup() {
   gum() { :; }
   export -f gum
   source "$PROJECT_ROOT/installer/lib.sh"
-
-  # Define _integration_status extracted from install.sh (keep in sync with
-  # the definition in install.sh — search for "_integration_status()" there).
-  # install.sh cannot be sourced wholesale due to top-level side effects.
-  _integration_status() {
-    local agent_id="$1"
-    local intg="$2"
-    local agent_upper
-    agent_upper=$(echo "$agent_id" | tr '[:lower:]' '[:upper:]')
-    case "$intg" in
-      discord)
-        local token
-        token=$(env_get "DISCORD_${agent_upper}_TOKEN")
-        [ -n "$token" ] && echo "configured" || echo "not configured"
-        ;;
-      github)
-        local token
-        token=$(env_get "GH_TOKEN")
-        [ -n "$token" ] && echo "configured" || echo "not configured"
-        ;;
-      claude)
-        local token
-        token=$(env_get "CLAUDE_CODE_OAUTH_TOKEN")
-        [ -n "$token" ] && echo "configured" || echo "not configured"
-        ;;
-      gws)
-        [ -f "$SCRIPT_DIR/home/.config/gws/credentials.json" ] && echo "configured" || echo "not configured"
-        ;;
-      xurl)
-        local token
-        token=$(env_get "X_BEARER_TOKEN")
-        [ -n "$token" ] && echo "configured" || echo "not configured"
-        ;;
-      *)
-        echo "not configured"
-        ;;
-    esac
-  }
   export -f _integration_status
 }
 
