@@ -1,0 +1,50 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this feature is needed. What problem does it solve, or what workflow does it improve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: What needs to be built. Use clear, testable acceptance criteria when possible.
+      placeholder: |
+        - Users can configure X via `make auth`
+        - The setting persists in `.env`
+        - Running `make up` picks up the new value without rebuild
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-notes
+    attributes:
+      label: Technical notes
+      description: Implementation hints, relevant files, patterns to follow, or constraints.
+      placeholder: |
+        - Follow the pattern in `installer/ollama.sh`
+        - Add tests in `tests/`
+    validations:
+      required: false
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What this feature explicitly does NOT cover.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you've thought about and why they were rejected.
+    validations:
+      required: false
