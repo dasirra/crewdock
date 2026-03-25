@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-CrewDock — a self-hosted AI crew running 24/7 on your server via Docker, built on [OpenClaw](https://github.com/openclaw/openclaw). For upstream docs, APIs, and troubleshooting, check the [documentation](https://docs.openclaw.ai/start/getting-started). When debugging issues, consult these resources for possible solutions before assuming the problem is local.
+CrewDock — a self-hosted AI crew running 24/7 on your server via Docker, built on [OpenClaw](https://github.com/openclaw/openclaw). When working with OpenClaw APIs, cron jobs, sessions, config, or agent features, query the context7 MCP server (`/openclaw/openclaw`) for up-to-date documentation before guessing. For general upstream troubleshooting, check the [documentation](https://docs.openclaw.ai/start/getting-started).
 
 Two main components:
 
