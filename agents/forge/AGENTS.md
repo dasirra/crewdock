@@ -22,13 +22,8 @@ Triggered by an OpenClaw cron job at the interval configured in `cron.interval`.
     --cron "<cron.interval>" \
     --tz "<timezone from config.json>" \
     --session main \
-    --message "Run the cron cycle. Follow AGENTS.md section 'Cron cycle (scheduled job)' exactly." \
-    --announce \
-    --channel discord \
-    --account forge \
-    --to "channel:<CHANNEL_ID>"
+    --message "Run the cron cycle. Follow AGENTS.md section 'Cron cycle (scheduled job)' exactly."
   ```
-  Replace `<CHANNEL_ID>` with the Discord channel ID from the current conversation context.
   Save the returned job ID to `cron.jobId` in `config.json` and set `cron.enabled` to `true`.
 - "disable" — delete the cron job: `openclaw cron delete <cron.jobId>`. Set `cron.enabled` to `false` and clear `cron.jobId` in `config.json`.
 - "set interval `<cron-expr>`" — update `cron.interval` in `config.json`. If currently enabled, edit the existing job: `openclaw cron edit <cron.jobId> --cron "<cron-expr>"`
