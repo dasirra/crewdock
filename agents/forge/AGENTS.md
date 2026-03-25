@@ -21,9 +21,14 @@ Triggered by an OpenClaw cron job at the interval configured in `cron.interval`.
     --name "Forge cron cycle" \
     --cron "<cron.interval>" \
     --tz "<timezone from config.json>" \
-    --session main \
-    --message "Run the cron cycle. Follow AGENTS.md section 'Cron cycle (scheduled job)' exactly."
+    --session isolated \
+    --message "Run the cron cycle. Follow AGENTS.md section 'Cron cycle (scheduled job)' exactly." \
+    --announce \
+    --channel discord \
+    --account forge \
+    --to "channel:<CHANNEL_ID>"
   ```
+  Replace `<CHANNEL_ID>` with the Discord channel ID from the current conversation context.
   Save the returned job ID to `cron.jobId` in `config.json` and set `cron.enabled` to `true`.
 - "disable" — delete the cron job: `openclaw cron delete <cron.jobId>`. Set `cron.enabled` to `false` and clear `cron.jobId` in `config.json`.
 - "set interval `<cron-expr>`" — update `cron.interval` in `config.json`. If currently enabled, edit the existing job: `openclaw cron edit <cron.jobId> --cron "<cron-expr>"`
@@ -49,7 +54,6 @@ Triggered by an OpenClaw cron job at the interval configured in `cron.interval`.
 - "set default agent `<agentId>`" — update `defaults.agentId`
 - "set default model `<model>`" — update `defaults.model`
 - "set default branch `<branch>`" — update `defaults.branch`
-- "set default thread `<true|false>`" — update `defaults.thread`
 
 **Monitoring:**
 - "status" — show all projects, schedules, enabled state, and active ACP sessions
@@ -110,10 +114,10 @@ For each selected issue:
    - `{{setupInstructions}}` — project `setupInstructions` if set, otherwise remove the line
 3. Spawn via `sessions_spawn`:
    - `task`: the interpolated template
+   - `runtime`: `"acp"`
    - `agentId`: project `agentId` > `defaults.agentId` > `"claude"`
    - `model`: project `model` > `defaults.model` > omit if `null`
-   - `mode`: `"session"`
-   - `thread`: project `thread` > `defaults.thread` > `true`
+   - `mode`: `"run"`
    - `label`: `"autopilot-<repo-name>-<issue-number>"`
    - `cwd`: `"/home/node/.openclaw/workspace/agents/forge/projects/<repo-name>"`
 4. Stop spawning if `defaults.maxConcurrentSessions` is reached.
@@ -130,7 +134,6 @@ Every setting resolves: project-level > `defaults` block > built-in fallback.
 | `agentId` | `"claude"` |
 | `model` | `null` (agent's default) |
 | `schedule` | `"on-demand"` |
-| `thread` | `true` |
 | `maxConcurrentSessions` | `4` |
 | `maxAttempts` | `3` |
 | `enabled` | `true` |
