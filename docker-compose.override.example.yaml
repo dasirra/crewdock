@@ -37,9 +37,9 @@ services:
   # everything on the host network stack, including SSH, SMB, databases,
   # and other local services.
   #
-  # Uncomment the block below and remove/rename docker-compose.override.yaml
-  # to activate. Note: "ports: !reset []" clears the port mappings from the
-  # base file, which are incompatible with host network mode.
+  # Add the block below to your docker-compose.override.yaml to activate.
+  # Note: "ports: !reset []" clears the port mappings from the base file,
+  # which are incompatible with host network mode.
   # -------------------------------------------------------------------------
   # openclaw-gateway:
   #   network_mode: "host"

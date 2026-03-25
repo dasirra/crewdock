@@ -166,8 +166,8 @@ esac
 # --- Screen 4: Network Mode ---
 print_header "Network Mode"
 
-EXISTING_NETWORK_MODE=$(env_get "NETWORK_MODE")
-if [ "$EXISTING_NETWORK_MODE" = "host" ]; then
+_override_file="$SCRIPT_DIR/docker-compose.override.yaml"
+if [ -f "$_override_file" ] && grep -q 'network_mode: "host"' "$_override_file"; then
   _network_default="host (legacy, unrestricted network access)"
 else
   _network_default="bridge (recommended, more secure)"
@@ -189,12 +189,9 @@ case "$_network_selected" in
   *)       selected_mode="bridge" ;;
 esac
 
-env_set "NETWORK_MODE" "$selected_mode"
-
 if [ "$selected_mode" = "host" ]; then
   print_warn "host mode removes network isolation. The container will have access to all host network interfaces."
   echo ""
-  _override_file="$SCRIPT_DIR/docker-compose.override.yaml"
   if [ ! -f "$_override_file" ]; then
     cat > "$_override_file" <<'OVERRIDE_EOF'
 services:
@@ -204,11 +201,18 @@ services:
 OVERRIDE_EOF
     print_info "Wrote docker-compose.override.yaml with host network mode."
   else
-    print_info "docker-compose.override.yaml already exists."
-    print_info "Add 'network_mode: \"host\"' and 'ports: !reset []' under openclaw-gateway manually."
+    if grep -q 'network_mode: "host"' "$_override_file"; then
+      print_success "docker-compose.override.yaml already configured for host mode."
+    else
+      print_info "docker-compose.override.yaml already exists."
+      print_info "Add 'network_mode: \"host\"' and 'ports: !reset []' under openclaw-gateway manually."
+    fi
   fi
 else
   print_success "Network mode set to bridge."
+  if [ -f "$_override_file" ] && grep -q 'network_mode: "host"' "$_override_file"; then
+    print_warn "docker-compose.override.yaml contains a host mode override. Remove or edit it to activate bridge mode."
+  fi
 fi
 echo ""
 
