@@ -209,6 +209,7 @@ INTG_STATUS_github=""
 INTG_STATUS_claude=""
 INTG_STATUS_gws=""
 INTG_STATUS_xurl=""
+INTG_STATUS_linear=""
 
 # --- Run integration flows ---
 # Order: discord > github > claude > gws > xurl
@@ -224,6 +225,8 @@ source "$SCRIPT_DIR/installer/claude.sh"
 source "$SCRIPT_DIR/installer/gws.sh"
 # shellcheck source=installer/xurl.sh
 source "$SCRIPT_DIR/installer/xurl.sh"
+# shellcheck source=installer/linear.sh
+source "$SCRIPT_DIR/installer/linear.sh"
 
 # Discord (shared + per-agent)
 case " $REQUIRED_INTEGRATIONS $OPTIONAL_INTEGRATIONS " in
@@ -350,6 +353,22 @@ case " $REQUIRED_INTEGRATIONS " in
     ;;
 esac
 
+# Linear
+case " $OPTIONAL_INTEGRATIONS " in
+  *" linear "*)
+    FORGE_AGENTS=$(agents_for_integration linear)
+    if gum_confirm "Set up Linear integration? (optional for $FORGE_AGENTS)"; then
+      print_header "Linear Setup"
+      print_info "Agents: $FORGE_AGENTS"
+      echo ""
+      run_linear
+      INTG_STATUS_linear="${LINEAR_SETUP_STATUS:-unverified}"
+    else
+      INTG_STATUS_linear="skipped"
+    fi
+    ;;
+esac
+
 # Set OPENCLAW_GATEWAY_TOKEN as empty (auto-generated on boot)
 env_set "OPENCLAW_GATEWAY_TOKEN" ""
 
@@ -388,6 +407,7 @@ _status_icon() {
 [ -n "$INTG_STATUS_discord" ] && echo "  $(_status_icon "$INTG_STATUS_discord") Discord ($INTG_STATUS_discord)"
 [ -n "$INTG_STATUS_github" ]  && echo "  $(_status_icon "$INTG_STATUS_github") GitHub ($INTG_STATUS_github)"
 [ -n "$INTG_STATUS_xurl" ]    && echo "  $(_status_icon "$INTG_STATUS_xurl") X/Twitter ($INTG_STATUS_xurl)"
+[ -n "$INTG_STATUS_linear" ]  && echo "  $(_status_icon "$INTG_STATUS_linear") Linear ($INTG_STATUS_linear)"
 # Non-verifiable integrations: show configured/skipped only
 if [ -n "$INTG_STATUS_claude" ]; then
   if [ "$INTG_STATUS_claude" = "skipped" ]; then
