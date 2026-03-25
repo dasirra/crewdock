@@ -174,7 +174,9 @@ if [ "$RECONFIG" -eq 1 ]; then
           _run_git_identity
           ;;
         "Discord")
-          run_discord_shared
+          if [ -z "$(env_get "DISCORD_GUILD")" ]; then
+            run_discord_shared
+          fi
           run_discord_agent "$agent_id" "$agent_name"
           ;;
         "GitHub")
@@ -195,21 +197,24 @@ if [ "$RECONFIG" -eq 1 ]; then
 
   # --- Reconfigure: top-level menu ---
   run_reconfigure_menu() {
+    # Build id|name pairs once; reused for menu rendering and choice resolution
+    local agent_map
+    agent_map=$(jq -r '.agents[] | .id + "|" + .name' "$MANIFEST")
+
     while true; do
       local menu_items=""
-      local all_agent_ids
-      all_agent_ids=$(jq -r '.agents[].id' "$MANIFEST")
-      for aid in $all_agent_ids; do
-        local aid_upper aname token_val
+      local aid aname aid_upper token_val
+      while IFS='|' read -r aid aname; do
         aid_upper=$(echo "$aid" | tr '[:lower:]' '[:upper:]')
-        aname=$(jq -r --arg id "$aid" '.agents[] | select(.id == $id) | .name' "$MANIFEST")
         token_val=$(env_get "DISCORD_${aid_upper}_TOKEN")
         if [ -n "$token_val" ]; then
           menu_items="${menu_items}${aname}\n"
         else
           menu_items="${menu_items}${aname} (not installed)\n"
         fi
-      done
+      done <<EOF
+$agent_map
+EOF
       menu_items="${menu_items}Done"
 
       local choice
@@ -217,21 +222,20 @@ if [ "$RECONFIG" -eq 1 ]; then
       [ -z "$choice" ] && break
       [ "$choice" = "Done" ] && break
 
-      # Find agent id for chosen name
+      # Resolve chosen display string back to agent id
       local chosen_id="" chosen_name=""
-      for aid in $all_agent_ids; do
-        local aname
-        aname=$(jq -r --arg id "$aid" '.agents[] | select(.id == $id) | .name' "$MANIFEST")
+      while IFS='|' read -r aid aname; do
         if [ "$choice" = "$aname" ] || [ "$choice" = "$aname (not installed)" ]; then
           chosen_id="$aid"
           chosen_name="$aname"
           break
         fi
-      done
+      done <<EOF
+$agent_map
+EOF
       [ -z "$chosen_id" ] && continue
 
       # Check if installed
-      local aid_upper token_val
       aid_upper=$(echo "$chosen_id" | tr '[:lower:]' '[:upper:]')
       token_val=$(env_get "DISCORD_${aid_upper}_TOKEN")
       if [ -z "$token_val" ]; then
@@ -262,7 +266,9 @@ if [ "$RECONFIG" -eq 1 ]; then
       case "$intg" in
         discord)
           print_header "Discord Setup"
-          run_discord_shared
+          if [ -z "$(env_get "DISCORD_GUILD")" ]; then
+            run_discord_shared
+          fi
           run_discord_agent "$agent_id" "$agent_name"
           ;;
         github)
@@ -353,7 +359,6 @@ $ALL_AGENTS
 EOF
 AGENT_CHOICES="${AGENT_CHOICES#$'\n'}"
 
-# In reconfigure mode, we'll just show all options
 SELECTED_DISPLAY=$(echo "$AGENT_CHOICES" | gum choose --no-limit --header "Space to select, Enter to confirm:")
 if [ -z "$SELECTED_DISPLAY" ]; then
   print_warn "No agents selected. Exiting."

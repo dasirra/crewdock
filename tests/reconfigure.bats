@@ -11,7 +11,9 @@ setup() {
   export -f gum
   source "$PROJECT_ROOT/installer/lib.sh"
 
-  # Define _integration_status as extracted from install.sh
+  # Define _integration_status extracted from install.sh (keep in sync with
+  # the definition in install.sh — search for "_integration_status()" there).
+  # install.sh cannot be sourced wholesale due to top-level side effects.
   _integration_status() {
     local agent_id="$1"
     local intg="$2"
