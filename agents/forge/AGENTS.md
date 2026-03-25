@@ -21,7 +21,7 @@ Triggered by an OpenClaw cron job at the interval configured in `cron.interval`.
     --name "Forge cron cycle" \
     --cron "<cron.interval>" \
     --tz "<timezone from config.json>" \
-    --session isolated \
+    --session current \
     --message "Run the cron cycle. Follow AGENTS.md section 'Cron cycle (scheduled job)' exactly." \
     --announce \
     --channel discord \
