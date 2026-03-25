@@ -39,7 +39,7 @@ Triggered by an OpenClaw cron job at the interval configured in `cron.interval`.
 - "run all" — trigger all enabled repos now
 
 **Managing repos:**
-- "add `<owner/repo>`" or "add `<owner/repo>` on `<branch>`" — add a project to config.json (inherits all defaults; branch defaults to `develop` if not specified)
+- "add `<owner/repo>`" or "add `<owner/repo>` on `<branch>`" — add a project to config.json. Prompt the user which issue provider to use (`github` or `linear`). If `linear` is selected, prompt for the Linear project ID (UUID from linear.app). Branch defaults to `develop` if not specified.
 - "remove `<repo>`" — remove a project from config.json
 - "pause `<repo>`" — set `enabled: false`
 - "resume `<repo>`" — set `enabled: true`
@@ -83,9 +83,20 @@ Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and sessi
 
 1. Run `forge-db.sh init` to ensure the DB exists.
 
-2. Fetch open issues oldest first:
+2. Determine the issue provider and fetch open issues:
+
+   Read the project's `provider` field (default: `"github"`). Source the provider script from the Forge workspace:
    ```bash
-   gh issue list --repo <repo> --state open --sort created --json number,title,labels,createdAt --limit 30
+   FORGE_WS="/home/node/.openclaw/workspace/agents/forge"
+   source "$FORGE_WS/providers/<provider>.sh"
+   ```
+
+   For `github` provider, `project_ref` = the project's `repo` field.
+   For `linear` provider, `project_ref` = the project's `linearProject` field.
+
+   Fetch issues (output: JSON array with `number`, `title`, `labels`, `createdAt`):
+   ```bash
+   issues=$(provider_fetch_issues "$project_ref")
    ```
 
 3. Filter out issues:
@@ -95,7 +106,7 @@ Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and sessi
      - `queued` or `failed` (retryable) — eligible
      - `new` (not in db) — run `forge-db.sh queue <repo> <number> "<title>"`, then eligible
    - **Exclude labels** — skip issues with labels in `excludeLabels`
-   - **Open PRs** — skip issues that already have an open PR (check branch names via `gh pr list`)
+   - **Open PRs** — skip issues that already have an open PR. Call `provider_has_open_pr <repo> <issue_number>` (always checks GitHub regardless of provider, since PRs always go to GitHub).
    - **Active sessions** — skip issues with an active ACP session (match `autopilot-<repo>-<number>` labels via `sessions_list`)
 
 4. Select the single oldest eligible issue. Only one issue is spawned per cron cycle.
@@ -135,6 +146,8 @@ Every setting resolves: project-level > `defaults` block > built-in fallback.
 | `maxAttempts` | `3` |
 | `enabled` | `true` |
 | `cron.interval` | `"*/15 * * * *"` |
+| `provider` | `"github"` |
+| `linearProject` | — (required when `provider` is `"linear"`) |
 
 ## SQLite tracking
 
