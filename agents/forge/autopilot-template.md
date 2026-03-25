@@ -9,6 +9,11 @@ Database helper: `/home/node/.openclaw/workspace/agents/forge/forge-db.sh`
 ## Setup
 
 ```bash
+# Clone the repo if it doesn't exist yet
+if [ ! -d "{{projectDir}}/.git" ]; then
+  mkdir -p "$(dirname "{{projectDir}}")"
+  git clone https://github.com/{{repo}}.git {{projectDir}}
+fi
 cd {{projectDir}}
 git fetch origin
 git checkout {{branch}}
