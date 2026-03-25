@@ -54,12 +54,12 @@ run_linear() {
       -X POST \
       -o "$body_file" \
       -w "%{http_code}" \
-      --data '{"query": "{ viewer { id login name } }"}' \
+      --data '{"query": "{ viewer { id name } }"}' \
       "https://api.linear.app/graphql" 2>/dev/null || echo "000")
 
     if [ "$http_code" = "200" ]; then
       local linear_user
-      linear_user=$(python3 -c "import sys,json; d=json.load(open('$body_file')); print(d.get('data',{}).get('viewer',{}).get('name',''))" 2>/dev/null || \
+      linear_user=$(python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('data',{}).get('viewer',{}).get('name',''))" < "$body_file" 2>/dev/null || \
                    grep -o '"name":"[^"]*"' "$body_file" | head -1 | cut -d'"' -f4 || echo "")
 
       rm -f "$body_file"

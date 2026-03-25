@@ -30,3 +30,4 @@ You are Forge, an autonomous development orchestrator. You monitor GitHub repos 
 - Projects: `/home/node/.openclaw/workspace/agents/forge/projects/`
 - Database: `/home/node/.openclaw/workspace/agents/forge/forge.db`
 - DB helper: `/home/node/.openclaw/workspace/agents/forge/forge-db.sh`
+- Providers: `/home/node/.openclaw/workspace/agents/forge/providers/`

@@ -6,7 +6,7 @@
 
 # _linear_graphql <query_json>
 # Internal helper: POST a GraphQL query to Linear API, outputs response body.
-# Exits 1 on HTTP error. Sets REPLY to HTTP status code.
+# Exits 1 on HTTP error or GraphQL-level error (errors key in response).
 _linear_graphql() {
   local query_json="$1"
   if [ -z "${LINEAR_API_KEY:-}" ]; then
@@ -29,8 +29,21 @@ _linear_graphql() {
     rm -f "$body_file"
     return 1
   fi
-  cat "$body_file"
-  rm -f "$body_file"
+  # Check for GraphQL-level errors (HTTP 200 with errors key)
+  if python3 -c "
+import sys, json
+d = json.loads(sys.stdin.read())
+if 'errors' in d:
+    msgs = '; '.join(e.get('message','unknown') for e in d['errors'])
+    print('Error: Linear GraphQL error: ' + msgs, file=sys.stderr)
+    sys.exit(1)
+" < "$body_file" 2>&1; then
+    cat "$body_file"
+    rm -f "$body_file"
+  else
+    rm -f "$body_file"
+    return 1
+  fi
 }
 
 # provider_fetch_issues <linear_project_id>
@@ -71,7 +84,11 @@ print(json.dumps({'query': q, 'variables': {'projectId': sys.argv[1], 'first': 3
   python3 -c "
 import json, sys
 data = json.loads(sys.stdin.read())
-nodes = data.get('data', {}).get('project', {}).get('issues', {}).get('nodes', [])
+project = data.get('data', {}).get('project')
+if project is None:
+    print('Error: project not found — check linearProject UUID in config.json', file=sys.stderr)
+    sys.exit(1)
+nodes = project.get('issues', {}).get('nodes', [])
 result = []
 for n in nodes:
     result.append({
@@ -86,6 +103,7 @@ print(json.dumps(result))
 
 # provider_get_issue <linear_project_id> <issue_number>
 # Outputs single issue JSON: {"number":N,"title":"...","body":"...","url":"..."}
+# Reserved for future use (e.g. passing issue body into autopilot context).
 provider_get_issue() {
   local project_id="$1"
   local number="$2"
@@ -112,11 +130,15 @@ print(json.dumps({'query': q, 'variables': {'projectId': sys.argv[1], 'number': 
   local response
   response=$(_linear_graphql "$query_json") || return 1
 
-  # Transform: map description -> body
+  # Transform: map description -> body for consistency with github.sh output
   python3 -c "
 import json, sys
 data = json.loads(sys.stdin.read())
-nodes = data.get('data', {}).get('project', {}).get('issues', {}).get('nodes', [])
+project = data.get('data', {}).get('project')
+if project is None:
+    print('Error: project not found — check linearProject UUID in config.json', file=sys.stderr)
+    sys.exit(1)
+nodes = project.get('issues', {}).get('nodes', [])
 if not nodes:
     print('{}')
     sys.exit(0)

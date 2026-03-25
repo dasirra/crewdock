@@ -92,12 +92,14 @@ Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and sessi
    ```
 
    For `github` provider, `project_ref` = the project's `repo` field.
-   For `linear` provider, `project_ref` = the project's `linearProject` field.
+   For `linear` provider, `project_ref` = the project's `linearProject` field. If `provider` is `"linear"` but `linearProject` is missing or empty, log an error and skip this project — do not attempt to fetch.
 
    Fetch issues (output: JSON array with `number`, `title`, `labels`, `createdAt`):
    ```bash
    issues=$(provider_fetch_issues "$project_ref")
    ```
+
+   Each provider also implements `provider_get_issue <project_ref> <number>` (reserved for future use when issue body/URL are needed in the autopilot context) and `provider_has_open_pr <github_repo> <number>`.
 
 3. Filter out issues:
    - **SQLite state** via `forge-db.sh check <repo> <number>`:
