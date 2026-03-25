@@ -137,7 +137,7 @@ auth-ollama:       ## Set up Ollama (local LLM inference)
 	if [ ! -f .env ]; then \
 	  touch .env; chmod 600 .env; \
 	fi; \
-	ESCAPED_HOST=$$(printf '%s\n' "$$HOST" | sed 's|[[\.*^$$()+?{|&]|\\&|g'); \
+	ESCAPED_HOST=$$(printf '%s\n' "$$HOST" | sed 's/[[\.*^$$()+?{|&]/\\&/g'); \
 	if grep -qE '^OLLAMA_HOST=' .env 2>/dev/null; then \
 	  tmpfile=$$(mktemp); \
 	  sed "s|^OLLAMA_HOST=.*|OLLAMA_HOST=$$ESCAPED_HOST|" .env > "$$tmpfile"; \
@@ -153,7 +153,7 @@ auth-ollama:       ## Set up Ollama (local LLM inference)
 	if RESPONSE=$$(curl -sf --max-time 5 "$$HOST/api/tags" 2>/dev/null); then \
 	  echo "  Connected to Ollama at $$HOST"; \
 	  echo ""; \
-	  MODELS=$$(echo "$$RESPONSE" | grep -o '"name":"[^"]*"' | sed 's/"name":"//;s/"$$//' | sed 's|^|  ollama/|'); \
+	  MODELS=$$(echo "$$RESPONSE" | grep -oE '"name"\s*:\s*"[^"]*"' | sed 's/"name"[[:space:]]*:[[:space:]]*"//;s/"$$//' | sed 's|^|  ollama/|'); \
 	  if [ -n "$$MODELS" ]; then \
 	    echo "  Available models:"; \
 	    echo "$$MODELS"; \
