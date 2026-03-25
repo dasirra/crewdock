@@ -134,26 +134,25 @@ auth-ollama:       ## Set up Ollama (local LLM inference)
 	read -p "Ollama host URL [$$DEFAULT_HOST]: " INPUT_HOST; \
 	HOST=$${INPUT_HOST:-$$DEFAULT_HOST}; \
 	echo ""; \
+	case "$$HOST" in \
+	  http://*|https://*) ;; \
+	  *) echo "  Error: URL must start with http:// or https://"; exit 1;; \
+	esac; \
 	if [ ! -f .env ]; then \
 	  touch .env; chmod 600 .env; \
 	fi; \
-	ESCAPED_HOST=$$(printf '%s\n' "$$HOST" | sed 's/[[\.*^$$()+?{|&]/\\&/g'); \
-	if grep -qE '^OLLAMA_HOST=' .env 2>/dev/null; then \
-	  tmpfile=$$(mktemp); \
-	  sed "s|^OLLAMA_HOST=.*|OLLAMA_HOST=$$ESCAPED_HOST|" .env > "$$tmpfile"; \
-	  mv "$$tmpfile" .env; \
-	  chmod 600 .env; \
-	else \
-	  echo "OLLAMA_HOST=$$HOST" >> .env; \
-	  chmod 600 .env; \
-	fi; \
+	tmpfile=$$(mktemp); \
+	grep -v '^OLLAMA_HOST=' .env > "$$tmpfile" 2>/dev/null || true; \
+	echo "OLLAMA_HOST=$$HOST" >> "$$tmpfile"; \
+	mv "$$tmpfile" .env; \
+	chmod 600 .env; \
 	echo "  Saved OLLAMA_HOST=$$HOST to .env"; \
 	echo ""; \
 	echo "  Checking connectivity..."; \
 	if RESPONSE=$$(curl -sf --max-time 5 "$$HOST/api/tags" 2>/dev/null); then \
 	  echo "  Connected to Ollama at $$HOST"; \
 	  echo ""; \
-	  MODELS=$$(echo "$$RESPONSE" | grep -oE '"name"\s*:\s*"[^"]*"' | sed 's/"name"[[:space:]]*:[[:space:]]*"//;s/"$$//' | sed 's|^|  ollama/|'); \
+	  MODELS=$$(echo "$$RESPONSE" | jq -r '.models[].name // empty' 2>/dev/null | sed 's|^|  ollama/|'); \
 	  if [ -n "$$MODELS" ]; then \
 	    echo "  Available models:"; \
 	    echo "$$MODELS"; \
