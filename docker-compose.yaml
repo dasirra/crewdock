@@ -23,3 +23,22 @@ services:
       - GIT_COMMITTER_EMAIL=${GIT_AUTHOR_EMAIL:-claude-dev@localhost}
     volumes:
       - ./home:/home/node
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+      - /var/tmp
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+    pids_limit: 512
