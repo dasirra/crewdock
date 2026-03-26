@@ -26,6 +26,32 @@ if [ ! -f "$MANIFEST" ]; then
   exit 1
 fi
 
+# --- Helper: git identity prompts ---
+_run_git_identity() {
+  print_header "Git Identity"
+  print_info "Used for commits made by Forge."
+  echo ""
+  local existing_name existing_email git_name git_email
+  existing_name=$(env_get "GIT_AUTHOR_NAME")
+  existing_email=$(env_get "GIT_AUTHOR_EMAIL")
+  git_name=$(gum_input "Full name" "${existing_name:-Your Name}")
+  if [ -z "$git_name" ] && [ -n "$existing_name" ]; then
+    git_name="$existing_name"
+  fi
+  git_email=$(gum_input "Email address" "${existing_email:-you@example.com}")
+  if [ -z "$git_email" ] && [ -n "$existing_email" ]; then
+    git_email="$existing_email"
+  fi
+  if [ -z "$git_name" ] || [ -z "$git_email" ]; then
+    print_warn "Git name and email are required. Skipping."
+    echo ""
+    return
+  fi
+  env_set "GIT_AUTHOR_NAME" "$git_name"
+  env_set "GIT_AUTHOR_EMAIL" "$git_email"
+  echo ""
+}
+
 # --- Detect mode ---
 RECONFIG=0
 EXISTING_ENV="$SCRIPT_DIR/.env"
@@ -64,6 +90,237 @@ if [ "$RECONFIG" -eq 1 ]; then
   fi
   print_info "You can add, remove, or update settings."
   echo ""
+
+  # Source all integration modules for reconfigure mode
+  # shellcheck source=installer/discord.sh
+  source "$SCRIPT_DIR/installer/discord.sh"
+  # shellcheck source=installer/github.sh
+  source "$SCRIPT_DIR/installer/github.sh"
+  # shellcheck source=installer/claude.sh
+  source "$SCRIPT_DIR/installer/claude.sh"
+  # shellcheck source=installer/gws.sh
+  source "$SCRIPT_DIR/installer/gws.sh"
+  # shellcheck source=installer/xurl.sh
+  source "$SCRIPT_DIR/installer/xurl.sh"
+
+  # --- Reconfigure: agent submenu ---
+  _run_agent_submenu() {
+    local agent_id="$1"
+    local agent_name="$2"
+    while true; do
+      local menu_items=""
+      # Git Identity first for Forge
+      if [ "$agent_id" = "forge" ]; then
+        local git_name
+        git_name=$(env_get "GIT_AUTHOR_NAME")
+        local git_status
+        [ -n "$git_name" ] && git_status="configured" || git_status="not configured"
+        menu_items="${menu_items}Git Identity (${git_status})\n"
+      fi
+      # Integrations from manifest
+      local intg_ids
+      intg_ids=$(jq -r --arg id "$agent_id" '.agents[] | select(.id == $id) | .integrations | keys[]' "$MANIFEST")
+      for intg in $intg_ids; do
+        local intg_label intg_status
+        intg_label=$(jq -r --arg intg "$intg" '.integrations[$intg].label' "$MANIFEST")
+        intg_status=$(_integration_status "$agent_id" "$intg")
+        menu_items="${menu_items}${intg_label} (${intg_status})\n"
+      done
+      menu_items="${menu_items}Back"
+
+      print_header "$agent_name"
+      local choice
+      choice=$(printf "%b" "$menu_items" | gum choose --header "")
+      [ -z "$choice" ] && break
+      [ "$choice" = "Back" ] && break
+
+      # Strip " (status)" suffix to get the label
+      local label
+      label=$(echo "$choice" | sed -E 's/ \([^)]*\)$//')
+      if [ "$label" = "Git Identity" ]; then
+        _run_git_identity
+      else
+        # Resolve label back to integration key via manifest
+        local intg_key
+        intg_key=$(jq -r --arg label "$label" \
+          '.integrations | to_entries[] | select(.value.label == $label) | .key' "$MANIFEST")
+        case "$intg_key" in
+          discord)
+            if [ -z "$(env_get "DISCORD_GUILD")" ]; then
+              run_discord_shared
+            fi
+            run_discord_agent "$agent_id" "$agent_name"
+            ;;
+          github)
+            run_github
+            ;;
+          claude)
+            run_claude
+            ;;
+          gws)
+            run_gws
+            ;;
+          xurl)
+            run_xurl
+            ;;
+        esac
+      fi
+    done
+  }
+
+  # --- Reconfigure: top-level menu ---
+  run_reconfigure_menu() {
+    # Build id|name pairs once; reused for menu rendering and choice resolution
+    local agent_map
+    agent_map=$(jq -r '.agents[] | .id + "|" + .name' "$MANIFEST")
+
+    while true; do
+      local menu_items=""
+      local aid aname aid_upper token_val
+      while IFS='|' read -r aid aname; do
+        aid_upper=$(echo "$aid" | tr '[:lower:]' '[:upper:]')
+        token_val=$(env_get "DISCORD_${aid_upper}_TOKEN")
+        if [ -n "$token_val" ]; then
+          menu_items="${menu_items}${aname}\n"
+        else
+          menu_items="${menu_items}${aname} (not installed)\n"
+        fi
+      done <<EOF
+$agent_map
+EOF
+      menu_items="${menu_items}Done"
+
+      local choice
+      choice=$(printf "%b" "$menu_items" | gum choose --header "What would you like to configure?")
+      [ -z "$choice" ] && break
+      [ "$choice" = "Done" ] && break
+
+      # Resolve chosen display string back to agent id
+      local chosen_id="" chosen_name=""
+      while IFS='|' read -r aid aname; do
+        if [ "$choice" = "$aname" ] || [ "$choice" = "$aname (not installed)" ]; then
+          chosen_id="$aid"
+          chosen_name="$aname"
+          break
+        fi
+      done <<EOF
+$agent_map
+EOF
+      [ -z "$chosen_id" ] && continue
+
+      # Check if installed
+      aid_upper=$(echo "$chosen_id" | tr '[:lower:]' '[:upper:]')
+      token_val=$(env_get "DISCORD_${aid_upper}_TOKEN")
+      if [ -z "$token_val" ]; then
+        run_full_agent_setup "$chosen_id"
+      else
+        _run_agent_submenu "$chosen_id" "$chosen_name"
+      fi
+    done
+  }
+
+  # --- Reconfigure: full agent setup (for not-installed agents) ---
+  run_full_agent_setup() {
+    local agent_id="$1"
+    local agent_name
+    agent_name=$(jq -r --arg id "$agent_id" '.agents[] | select(.id == $id) | .name' "$MANIFEST")
+
+    print_header "Setting up $agent_name"
+
+    # Git Identity for Forge
+    if [ "$agent_id" = "forge" ]; then
+      _run_git_identity
+    fi
+
+    # Run each integration
+    local intg_ids
+    intg_ids=$(jq -r --arg id "$agent_id" '.agents[] | select(.id == $id) | .integrations | keys[]' "$MANIFEST")
+    for intg in $intg_ids; do
+      case "$intg" in
+        discord)
+          print_header "Discord Setup"
+          if [ -z "$(env_get "DISCORD_GUILD")" ]; then
+            run_discord_shared
+          fi
+          run_discord_agent "$agent_id" "$agent_name"
+          ;;
+        github)
+          print_header "GitHub Setup"
+          run_github
+          ;;
+        claude)
+          print_header "Claude Setup"
+          run_claude
+          ;;
+        gws)
+          print_header "Google Workspace Setup"
+          run_gws
+          ;;
+        xurl)
+          print_header "X/Twitter Setup"
+          run_xurl
+          ;;
+      esac
+    done
+  }
+
+  # --- Reconfigure: summary ---
+  run_reconfigure_summary() {
+    # Ensure gateway token key exists (auto-generated on boot)
+    if ! grep -qE "^OPENCLAW_GATEWAY_TOKEN=" "$SCRIPT_DIR/.env" 2>/dev/null; then
+      env_set "OPENCLAW_GATEWAY_TOKEN" ""
+    fi
+
+    # Create runtime directories
+    mkdir -p \
+      "$SCRIPT_DIR/home/.openclaw/workspace" \
+      "$SCRIPT_DIR/home/.claude" \
+      "$SCRIPT_DIR/home/.config/gh" \
+      "$SCRIPT_DIR/home/.config/gws"
+    [ -f "$SCRIPT_DIR/home/.xurl" ] || touch "$SCRIPT_DIR/home/.xurl"
+
+    echo ""
+    print_header "Configuration Updated"
+    echo ""
+
+    gum style --foreground 212 "Configured agents:"
+    local all_agent_ids
+    all_agent_ids=$(jq -r '.agents[].id' "$MANIFEST")
+    for aid in $all_agent_ids; do
+      local aid_upper token aname
+      aid_upper=$(echo "$aid" | tr '[:lower:]' '[:upper:]')
+      token=$(env_get "DISCORD_${aid_upper}_TOKEN")
+      if [ -n "$token" ]; then
+        aname=$(jq -r --arg id "$aid" '.agents[] | select(.id == $id) | .name' "$MANIFEST")
+        echo "  ✓ $aname"
+      fi
+    done
+    echo ""
+
+    gum style --foreground 212 "Integrations:"
+    local discord_guild gh_token claude_token x_token
+    discord_guild=$(env_get "DISCORD_GUILD")
+    [ -n "$discord_guild" ] && echo "  ✓ Discord (configured)" || true
+    gh_token=$(env_get "GH_TOKEN")
+    [ -n "$gh_token" ] && echo "  ✓ GitHub (configured)" || true
+    claude_token=$(env_get "CLAUDE_CODE_OAUTH_TOKEN")
+    [ -n "$claude_token" ] && echo "  ✓ Claude Code (configured)" || true
+    [ -f "$SCRIPT_DIR/home/.config/gws/credentials.json" ] && echo "  ✓ Google Workspace (configured)" || true
+    x_token=$(env_get "X_BEARER_TOKEN")
+    [ -n "$x_token" ] && echo "  ✓ X/Twitter (configured)" || true
+    echo ""
+
+    if gum_confirm "Restart OpenClaw now? (make restart)"; then
+      print_info "Running make restart..."
+      make -C "$SCRIPT_DIR" restart
+    else
+      print_info "Run 'make restart' to apply changes."
+    fi
+  }
+
+  run_reconfigure_menu
+  run_reconfigure_summary
+  exit 0
 fi
 
 # --- Screen 2: Agent Selection ---
@@ -82,7 +339,6 @@ $ALL_AGENTS
 EOF
 AGENT_CHOICES="${AGENT_CHOICES#$'\n'}"
 
-# In reconfigure mode, we'll just show all options
 SELECTED_DISPLAY=$(echo "$AGENT_CHOICES" | gum choose --no-limit --header "Space to select, Enter to confirm:")
 if [ -z "$SELECTED_DISPLAY" ]; then
   print_warn "No agents selected. Exiting."
@@ -140,26 +396,7 @@ agents_for_integration() {
 # --- Screen 3: Git Identity (only for Forge) ---
 case " $SELECTED_AGENT_IDS " in
   *" forge "*)
-    print_header "Git Identity"
-    print_info "Used for commits made by Forge."
-    echo ""
-
-    EXISTING_NAME=$(env_get "GIT_AUTHOR_NAME")
-    EXISTING_EMAIL=$(env_get "GIT_AUTHOR_EMAIL")
-
-    GIT_NAME=$(gum_input "Full name" "${EXISTING_NAME:-Your Name}")
-    if [ -z "$GIT_NAME" ] && [ -n "$EXISTING_NAME" ]; then
-      GIT_NAME="$EXISTING_NAME"
-    fi
-
-    GIT_EMAIL=$(gum_input "Email address" "${EXISTING_EMAIL:-you@example.com}")
-    if [ -z "$GIT_EMAIL" ] && [ -n "$EXISTING_EMAIL" ]; then
-      GIT_EMAIL="$EXISTING_EMAIL"
-    fi
-
-    env_set "GIT_AUTHOR_NAME" "$GIT_NAME"
-    env_set "GIT_AUTHOR_EMAIL" "$GIT_EMAIL"
-    echo ""
+    _run_git_identity
     ;;
 esac
 
