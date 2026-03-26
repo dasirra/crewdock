@@ -159,9 +159,8 @@ auth-ollama:       ## Set up Ollama (local LLM inference)
 	fi; \
 	echo ""; \
 	echo "  Registering Ollama provider with OpenClaw..."; \
-	docker compose exec openclaw-gateway openclaw config set models.providers.ollama.baseUrl "$$HOST"; \
-	docker compose exec openclaw-gateway openclaw config set models.providers.ollama.apiKey "ollama-local"; \
-	docker compose exec openclaw-gateway openclaw config set models.providers.ollama.api "ollama"; \
+	docker compose exec openclaw-gateway openclaw config set models.providers.ollama \
+	  '{"baseUrl":"'"$$HOST"'","apiKey":"ollama-local","api":"ollama","models":[]}'; \
 	echo "  Ollama registered. Run 'make shell' then 'openclaw models list' to verify."
 
 # --- Maintenance ---
