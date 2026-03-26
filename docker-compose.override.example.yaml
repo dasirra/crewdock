@@ -40,6 +40,7 @@ services:
   # Add the block below to your docker-compose.override.yaml to activate.
   # Note: "ports: !reset []" clears the port mappings from the base file,
   # which are incompatible with host network mode.
+  # Requires Docker Compose >= 2.24.0 (ships with Docker Desktop 4.28+).
   # -------------------------------------------------------------------------
   # openclaw-gateway:
   #   network_mode: "host"

@@ -400,59 +400,6 @@ case " $SELECTED_AGENT_IDS " in
     ;;
 esac
 
-# --- Screen 4: Network Mode ---
-print_header "Network Mode"
-
-_override_file="$SCRIPT_DIR/docker-compose.override.yaml"
-if [ -f "$_override_file" ] && grep -q 'network_mode: "host"' "$_override_file"; then
-  _network_default="host (legacy, unrestricted network access)"
-else
-  _network_default="bridge (recommended, more secure)"
-fi
-
-_network_selected=$(printf '%s\n' \
-  "bridge (recommended, more secure)" \
-  "host (legacy, unrestricted network access)" \
-  | gum choose --header "How should the container connect to the network?" --selected "$_network_default" || true)
-
-if [ -z "$_network_selected" ]; then
-  _network_selected="bridge (recommended, more secure)"
-fi
-
-# Extract just bridge or host from the display string
-case "$_network_selected" in
-  bridge*) selected_mode="bridge" ;;
-  host*)   selected_mode="host" ;;
-  *)       selected_mode="bridge" ;;
-esac
-
-if [ "$selected_mode" = "host" ]; then
-  print_warn "host mode removes network isolation. The container will have access to all host network interfaces."
-  echo ""
-  if [ ! -f "$_override_file" ]; then
-    cat > "$_override_file" <<'OVERRIDE_EOF'
-services:
-  openclaw-gateway:
-    network_mode: "host"
-    ports: !reset []
-OVERRIDE_EOF
-    print_info "Wrote docker-compose.override.yaml with host network mode."
-  else
-    if grep -q 'network_mode: "host"' "$_override_file"; then
-      print_success "docker-compose.override.yaml already configured for host mode."
-    else
-      print_info "docker-compose.override.yaml already exists."
-      print_info "Add 'network_mode: \"host\"' and 'ports: !reset []' under openclaw-gateway manually."
-    fi
-  fi
-else
-  print_success "Network mode set to bridge."
-  if [ -f "$_override_file" ] && grep -q 'network_mode: "host"' "$_override_file"; then
-    print_warn "docker-compose.override.yaml contains a host mode override. Remove or edit it to activate bridge mode."
-  fi
-fi
-echo ""
-
 # --- Compute required and optional integrations ---
 REQUIRED_INTEGRATIONS=""
 OPTIONAL_INTEGRATIONS=""
