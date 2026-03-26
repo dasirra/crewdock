@@ -1,4 +1,4 @@
-.PHONY: up down restart restart-gateway logs logs-all status version config-preview config-reset shell dashboard auth auth-anthropic auth-codex test clean help
+.PHONY: up down restart restart-gateway logs logs-all status version config-preview config-reset shell dashboard auth auth-anthropic auth-codex auth-ollama test clean help
 
 OPENCLAW_VERSION := $(shell cat .openclaw-version 2>/dev/null || echo latest)
 export OPENCLAW_VERSION
@@ -72,44 +72,49 @@ dashboard:         ## Open dashboard: auto-approve pending devices, print URL
 	echo "http://localhost:18789/?token=$$TOKEN"
 
 auth:              ## Authenticate an LLM provider (interactive selector)
-	@if ! docker compose ps --status running 2>/dev/null | grep -q openclaw-gateway; then \
-	  echo "Error: Gateway is not running. Run 'make up' first."; exit 1; \
-	fi; \
-	echo ""; \
+	@echo ""; \
 	AUTH_FILE="home/.openclaw/workspace/agents/main/auth-profiles.json"; \
-	CODEX_TAG=""; ANTHROPIC_TAG=""; \
+	CODEX_TAG=""; ANTHROPIC_TAG=""; OLLAMA_TAG=""; \
 	if [ -f "$$AUTH_FILE" ]; then \
 	  if grep -q "openai-codex" "$$AUTH_FILE" 2>/dev/null; then CODEX_TAG=" [authenticated]"; fi; \
 	  if grep -q "anthropic" "$$AUTH_FILE" 2>/dev/null; then ANTHROPIC_TAG=" [authenticated]"; fi; \
 	fi; \
+	if [ -f .env ] && grep -qE '^OLLAMA_HOST=.+' .env 2>/dev/null; then OLLAMA_TAG=" [configured]"; fi; \
 	echo "  Agents need at least one LLM provider to work."; \
 	echo ""; \
 	CODEX_LABEL="OpenAI Codex (Recommended)$$CODEX_TAG"; \
 	ANTHROPIC_LABEL="Anthropic (Claude Code)$$ANTHROPIC_TAG"; \
+	OLLAMA_LABEL="Ollama (Local)$$OLLAMA_TAG"; \
 	if command -v gum >/dev/null 2>&1; then \
-	  PROVIDER=$$(printf '%s\n%s\n%s' "$$CODEX_LABEL" "$$ANTHROPIC_LABEL" "Exit" | gum choose --header "Select LLM provider:"); \
+	  PROVIDER=$$(printf '%s\n%s\n%s\n%s' "$$CODEX_LABEL" "$$ANTHROPIC_LABEL" "$$OLLAMA_LABEL" "Exit" | gum choose --header "Select LLM provider:"); \
 	else \
 	  echo "  Select LLM provider:"; \
 	  echo "    1) $$CODEX_LABEL"; \
 	  echo "    2) $$ANTHROPIC_LABEL"; \
-	  echo "    3) Exit"; \
+	  echo "    3) $$OLLAMA_LABEL"; \
+	  echo "    4) Exit"; \
 	  echo ""; \
-	  read -p "  Choice [1-3]: " choice; \
+	  read -p "  Choice [1-4]: " choice; \
 	  case "$$choice" in \
 	    1) PROVIDER="OpenAI Codex";; \
 	    2) PROVIDER="Anthropic";; \
-	    3) PROVIDER="Exit";; \
+	    3) PROVIDER="Ollama";; \
+	    4) PROVIDER="Exit";; \
 	    *) echo "Invalid selection."; exit 1;; \
 	  esac; \
 	fi; \
 	case "$$PROVIDER" in \
 	  OpenAI*) $(MAKE) auth-codex;; \
 	  Anthropic*) $(MAKE) auth-anthropic;; \
+	  Ollama*) $(MAKE) auth-ollama;; \
 	  Exit*) echo "  Skipped. Run 'make auth' when ready.";; \
 	  *) echo "No provider selected."; exit 1;; \
 	esac
 
 auth-anthropic:    ## Set up Anthropic OAuth (interactive paste-token)
+	@if ! docker compose ps --status running 2>/dev/null | grep -q openclaw-gateway; then \
+	  echo "Error: Gateway is not running. Run 'make up' first."; exit 1; \
+	fi
 	@echo ""
 	@echo "  WARNING: Using Anthropic OAuth subscription tokens outside of official"
 	@echo "  Claude tools may violate Anthropic's Terms of Service. Your account"
@@ -119,7 +124,49 @@ auth-anthropic:    ## Set up Anthropic OAuth (interactive paste-token)
 	docker compose exec openclaw-gateway node dist/index.js models auth paste-token --provider anthropic
 
 auth-codex:        ## Set up OpenAI Codex OAuth
+	@if ! docker compose ps --status running 2>/dev/null | grep -q openclaw-gateway; then \
+	  echo "Error: Gateway is not running. Run 'make up' first."; exit 1; \
+	fi
 	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
+
+auth-ollama:       ## Set up Ollama (local LLM inference)
+	@DEFAULT_HOST="http://localhost:11434"; \
+	read -p "Ollama host URL [$$DEFAULT_HOST]: " INPUT_HOST; \
+	HOST=$${INPUT_HOST:-$$DEFAULT_HOST}; \
+	echo ""; \
+	case "$$HOST" in \
+	  http://*|https://*) ;; \
+	  *) echo "  Error: URL must start with http:// or https://"; exit 1;; \
+	esac; \
+	if [ ! -f .env ]; then \
+	  touch .env; chmod 600 .env; \
+	fi; \
+	tmpfile=$$(mktemp); \
+	grep -v '^OLLAMA_HOST=' .env > "$$tmpfile" 2>/dev/null || true; \
+	echo "OLLAMA_HOST=$$HOST" >> "$$tmpfile"; \
+	mv "$$tmpfile" .env; \
+	chmod 600 .env; \
+	echo "  Saved OLLAMA_HOST=$$HOST to .env"; \
+	echo ""; \
+	echo "  Checking connectivity..."; \
+	if RESPONSE=$$(curl -sf --max-time 5 "$$HOST/api/tags" 2>/dev/null); then \
+	  echo "  Connected to Ollama at $$HOST"; \
+	  echo ""; \
+	  MODELS=$$(echo "$$RESPONSE" | jq -r '.models[].name // empty' 2>/dev/null | sed 's|^|  ollama/|'); \
+	  if [ -n "$$MODELS" ]; then \
+	    echo "  Available models:"; \
+	    echo "$$MODELS"; \
+	  else \
+	    echo "  No models found. Pull one with: ollama pull <model>"; \
+	  fi; \
+	else \
+	  echo "  Could not reach Ollama at $$HOST"; \
+	  echo "  Make sure Ollama is running: ollama serve"; \
+	fi; \
+	echo ""; \
+	if docker compose ps --status running 2>/dev/null | grep -q openclaw-gateway; then \
+	  echo "  Gateway is running. Restart to pick up changes: make restart-gateway"; \
+	fi
 
 # --- Maintenance ---
 
