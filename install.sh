@@ -42,6 +42,11 @@ _run_git_identity() {
   if [ -z "$git_email" ] && [ -n "$existing_email" ]; then
     git_email="$existing_email"
   fi
+  if [ -z "$git_name" ] || [ -z "$git_email" ]; then
+    print_warn "Git name and email are required. Skipping."
+    echo ""
+    return
+  fi
   env_set "GIT_AUTHOR_NAME" "$git_name"
   env_set "GIT_AUTHOR_EMAIL" "$git_email"
   echo ""
@@ -132,29 +137,34 @@ if [ "$RECONFIG" -eq 1 ]; then
       # Strip " (status)" suffix to get the label
       local label
       label=$(echo "$choice" | sed -E 's/ \([^)]*\)$//')
-      case "$label" in
-        "Git Identity")
-          _run_git_identity
-          ;;
-        "Discord")
-          if [ -z "$(env_get "DISCORD_GUILD")" ]; then
-            run_discord_shared
-          fi
-          run_discord_agent "$agent_id" "$agent_name"
-          ;;
-        "GitHub")
-          run_github
-          ;;
-        "Claude Code")
-          run_claude
-          ;;
-        "Google Workspace")
-          run_gws
-          ;;
-        "X/Twitter")
-          run_xurl
-          ;;
-      esac
+      if [ "$label" = "Git Identity" ]; then
+        _run_git_identity
+      else
+        # Resolve label back to integration key via manifest
+        local intg_key
+        intg_key=$(jq -r --arg label "$label" \
+          '.integrations | to_entries[] | select(.value.label == $label) | .key' "$MANIFEST")
+        case "$intg_key" in
+          discord)
+            if [ -z "$(env_get "DISCORD_GUILD")" ]; then
+              run_discord_shared
+            fi
+            run_discord_agent "$agent_id" "$agent_name"
+            ;;
+          github)
+            run_github
+            ;;
+          claude)
+            run_claude
+            ;;
+          gws)
+            run_gws
+            ;;
+          xurl)
+            run_xurl
+            ;;
+        esac
+      fi
     done
   }
 
@@ -256,6 +266,11 @@ EOF
 
   # --- Reconfigure: summary ---
   run_reconfigure_summary() {
+    # Ensure gateway token key exists (auto-generated on boot)
+    if ! grep -qE "^OPENCLAW_GATEWAY_TOKEN=" "$SCRIPT_DIR/.env" 2>/dev/null; then
+      env_set "OPENCLAW_GATEWAY_TOKEN" ""
+    fi
+
     # Create runtime directories
     mkdir -p \
       "$SCRIPT_DIR/home/.openclaw/workspace" \
@@ -283,7 +298,9 @@ EOF
     echo ""
 
     gum style --foreground 212 "Integrations:"
-    local gh_token claude_token x_token
+    local discord_guild gh_token claude_token x_token
+    discord_guild=$(env_get "DISCORD_GUILD")
+    [ -n "$discord_guild" ] && echo "  ✓ Discord (configured)" || true
     gh_token=$(env_get "GH_TOKEN")
     [ -n "$gh_token" ] && echo "  ✓ GitHub (configured)" || true
     claude_token=$(env_get "CLAUDE_CODE_OAUTH_TOKEN")
