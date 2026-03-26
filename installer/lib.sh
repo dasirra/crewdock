@@ -189,3 +189,43 @@ env_blank() {
   local key="$1"
   env_set "$key" ""
 }
+
+# ---------------------------------------------------------------------------
+# Integration status
+# ---------------------------------------------------------------------------
+
+# _integration_status AGENT_ID INTEGRATION_KEY — returns "configured" or "not configured"
+_integration_status() {
+  local agent_id="$1"
+  local intg="$2"
+  local agent_upper
+  agent_upper=$(echo "$agent_id" | tr '[:lower:]' '[:upper:]')
+  case "$intg" in
+    discord)
+      local token
+      token=$(env_get "DISCORD_${agent_upper}_TOKEN")
+      [ -n "$token" ] && echo "configured" || echo "not configured"
+      ;;
+    github)
+      local token
+      token=$(env_get "GH_TOKEN")
+      [ -n "$token" ] && echo "configured" || echo "not configured"
+      ;;
+    claude)
+      local token
+      token=$(env_get "CLAUDE_CODE_OAUTH_TOKEN")
+      [ -n "$token" ] && echo "configured" || echo "not configured"
+      ;;
+    gws)
+      [ -f "$SCRIPT_DIR/home/.config/gws/credentials.json" ] && echo "configured" || echo "not configured"
+      ;;
+    xurl)
+      local token
+      token=$(env_get "X_BEARER_TOKEN")
+      [ -n "$token" ] && echo "configured" || echo "not configured"
+      ;;
+    *)
+      echo "not configured"
+      ;;
+  esac
+}

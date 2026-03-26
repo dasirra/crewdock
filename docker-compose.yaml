@@ -7,7 +7,11 @@ services:
         OPENCLAW_VERSION: ${OPENCLAW_VERSION:-latest}
     container_name: openclaw-gateway
     restart: unless-stopped
-    network_mode: "host"
+    ports:
+      - "18789:18789"
+      - "18790:18790"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file: .env
     environment:
       - NODE_ENV=production
