@@ -12,7 +12,11 @@ if npx skills list 2>/dev/null | grep -q googleworkspace; then
     log "GWS skills already installed."
 else
     log "Installing Google Workspace skills (pinned commit: ${GWS_COMMIT})..."
-    npx -y skills add "https://github.com/googleworkspace/cli#${GWS_COMMIT}" -y
+    GWS_TMP=$(mktemp -d)
+    git clone --quiet https://github.com/googleworkspace/cli.git "$GWS_TMP" \
+      && git -C "$GWS_TMP" checkout --quiet "$GWS_COMMIT" \
+      && npx -y skills add "$GWS_TMP" -y
+    rm -rf "$GWS_TMP"
     log "GWS skills installed."
 fi
 
