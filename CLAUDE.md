@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-CrewDock — a self-hosted AI crew running 24/7 on your server via Docker, built on [OpenClaw](https://github.com/openclaw/openclaw). For upstream docs, APIs, and troubleshooting, check the [documentation](https://docs.openclaw.ai/start/getting-started). When debugging issues, consult these resources for possible solutions before assuming the problem is local.
+CrewDock — a self-hosted AI crew running 24/7 on your server via Docker, built on [OpenClaw](https://github.com/openclaw/openclaw). When working with OpenClaw APIs, cron jobs, sessions, config, or agent features, query the context7 MCP server (`/openclaw/openclaw`) for up-to-date documentation before guessing. For general upstream troubleshooting, check the [documentation](https://docs.openclaw.ai/start/getting-started).
 
 Two main components:
 
@@ -46,7 +46,7 @@ Forge is the autonomous development orchestrator. Understanding its flow is key 
 1. Reads `workspace/agents/forge/config.json` for project list and defaults
 2. Checks concurrency via `sessions_list` (max 4 active `autopilot-*` sessions)
 3. For each enabled project whose schedule matches: fetches open GitHub issues, filters through SQLite DB + active sessions + open PRs + exclude labels
-4. Spawns native sessions (with thread binding) that invoke `acpx` CLI with interpolated `autopilot-template.md`
+4. Spawns ACP sessions that run the interpolated `autopilot-template.md`
 5. Exits — sessions continue autonomously
 
 **Key Forge files (in `agents/forge/`):**
@@ -112,5 +112,5 @@ For partial config updates from agent code, use `config.patch` RPC (requires `ba
 
 - **Agent installation:** Agent templates are baked into the Docker image at `/opt/openclaw-agents/` and copied to the workspace volume on first boot by `init.d/03-agents.sh`. Edit templates in `agents/forge/`, rebuild the image with `make up` to pick up changes. The init script skips agents whose workspace directory already exists.
 - **Forge config changes:** Forge can modify `config.json` only when the user explicitly asks. Never autonomously.
-- **Autopilot sessions:** hybrid spawn — `sessions_spawn` (native runtime, no `agentId`) with `thread: true` creates a Discord thread; the native session invokes `acpx` CLI directly for the coding work. This works around the ACP runtime flag-ordering bug.
+- **Autopilot sessions:** `sessions_spawn` with `runtime: "acp"` launches an isolated coding session. The cron runs in `isolated` mode with `--announce` to Discord, so thread binding is not available.
 - **Concurrency:** checked via `sessions_list` counting `autopilot-*` sessions, capped at `defaults.maxConcurrentSessions`.

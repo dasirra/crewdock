@@ -10,7 +10,6 @@
     "agentId": "claude",
     "model": null,
     "schedule": "on-demand",
-    "thread": true,
     "maxConcurrentSessions": 4,
     "maxAttempts": 3
   },
@@ -21,7 +20,6 @@
       "agentId": "claude",
       "model": null,
       "schedule": "22-07",
-      "thread": false,
       "enabled": true,
       "excludeLabels": ["wontfix"],
       "setupInstructions": "npm install"

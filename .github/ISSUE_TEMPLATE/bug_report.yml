@@ -1,0 +1,80 @@
+name: Bug Report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What should have happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to trigger the bug.
+      placeholder: |
+        1. Run `make up`
+        2. Execute `make shell`
+        3. Run `forge-db.sh list`
+        4. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output
+      description: Paste relevant logs, stack traces, or error messages.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this matters. What were you trying to accomplish when you hit this?
+    validations:
+      required: false
+
+  - type: textarea
+    id: technical-notes
+    attributes:
+      label: Technical notes
+      description: Relevant files, suspected root cause, or constraints for the fix.
+      placeholder: |
+        - Likely in `docker-entrypoint.sh` around line 45
+        - Only happens when OLLAMA_HOST is set
+    validations:
+      required: false
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Linux (Docker host)
+        - macOS (Docker Desktop)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "CrewDock commit/branch and OpenClaw version (from .openclaw-version)"
+      placeholder: "develop @ abc1234, OpenClaw 2025.3.20-1"
+    validations:
+      required: false

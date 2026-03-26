@@ -54,7 +54,6 @@ Triggered by an OpenClaw cron job at the interval configured in `cron.interval`.
 - "set default agent `<agentId>`" — update `defaults.agentId`
 - "set default model `<model>`" — update `defaults.model`
 - "set default branch `<branch>`" — update `defaults.branch`
-- "set default thread `<true|false>`" — update `defaults.thread`
 
 **Monitoring:**
 - "status" — show all projects, schedules, enabled state, and active ACP sessions
@@ -104,19 +103,24 @@ Uses SQLite (`forge.db`) for state tracking, combined with live GitHub and sessi
 
 For each selected issue:
 
-1. Read `autopilot-template.md` from your workspace and replace placeholders:
+1. Ensure the project directory exists. If `/home/node/.openclaw/workspace/agents/forge/projects/<repo-name>` does not exist, clone it:
+   ```bash
+   mkdir -p /home/node/.openclaw/workspace/agents/forge/projects
+   git clone https://github.com/<owner>/<repo-name>.git /home/node/.openclaw/workspace/agents/forge/projects/<repo-name>
+   ```
+2. Read `autopilot-template.md` from your workspace and replace placeholders:
    - `{{repo}}`, `{{branch}}`, `{{issueNumber}}`, `{{issueTitle}}`
    - `{{projectDir}}` — `/home/node/.openclaw/workspace/agents/forge/projects/<repo-name>`
    - `{{setupInstructions}}` — project `setupInstructions` if set, otherwise remove the line
-2. Spawn via `sessions_spawn`:
+3. Spawn via `sessions_spawn`:
    - `task`: the interpolated template
+   - `runtime`: `"acp"`
    - `agentId`: project `agentId` > `defaults.agentId` > `"claude"`
    - `model`: project `model` > `defaults.model` > omit if `null`
-   - `mode`: `"session"`
-   - `thread`: project `thread` > `defaults.thread` > `true`
+   - `mode`: `"run"`
    - `label`: `"autopilot-<repo-name>-<issue-number>"`
    - `cwd`: `"/home/node/.openclaw/workspace/agents/forge/projects/<repo-name>"`
-3. Stop spawning if `defaults.maxConcurrentSessions` is reached.
+4. Stop spawning if `defaults.maxConcurrentSessions` is reached.
 
 The ACP session handles its full lifecycle autonomously (DB tracking, build, cleanup, session stop) as defined in `autopilot-template.md`. Forge does not manage spawned sessions after launch.
 
@@ -130,7 +134,6 @@ Every setting resolves: project-level > `defaults` block > built-in fallback.
 | `agentId` | `"claude"` |
 | `model` | `null` (agent's default) |
 | `schedule` | `"on-demand"` |
-| `thread` | `true` |
 | `maxConcurrentSessions` | `4` |
 | `maxAttempts` | `3` |
 | `enabled` | `true` |

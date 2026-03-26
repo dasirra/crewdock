@@ -27,3 +27,21 @@ services:
   #     - "22001:22000/udp"
   #     - "21028:21027/udp"
   #   restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Advanced / legacy: switch back to host network mode
+  #
+  # Use this when the container needs full access to all host network
+  # interfaces (e.g. LAN service discovery, binding to arbitrary ports).
+  # WARNING: this removes network isolation — the container can reach
+  # everything on the host network stack, including SSH, SMB, databases,
+  # and other local services.
+  #
+  # Add the block below to your docker-compose.override.yaml to activate.
+  # Note: "ports: !reset []" clears the port mappings from the base file,
+  # which are incompatible with host network mode.
+  # Requires Docker Compose >= 2.24.0 (ships with Docker Desktop 4.28+).
+  # -------------------------------------------------------------------------
+  # openclaw-gateway:
+  #   network_mode: "host"
+  #   ports: !reset []

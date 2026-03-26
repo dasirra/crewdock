@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     python3 \
     python3-pip \
+    python-is-python3 \
     unzip \
     xz-utils \
     zip \
