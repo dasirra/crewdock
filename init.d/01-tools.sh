@@ -3,17 +3,11 @@
 # SCRIPT_NAME and log() are provided by docker-entrypoint.sh
 # Runs as `node` user. Tools are installed once and persist across restarts.
 
-# --- Claude Code CLI ---
-# Pre-installed in the Docker image at build time; this is a no-op check.
-if command -v claude &>/dev/null; then
-    log "Claude CLI already installed: $(claude --version 2>/dev/null || echo 'unknown')"
-else
-    log "WARNING: Claude CLI not found. It should be pre-installed in the Docker image."
-fi
+# Pinned versions (correspond to Dockerfile npm pins)
+GWS_COMMIT="a52d297cdfafbc53dfed66a3721a9bbd1d50dc31"  # @googleworkspace/cli@0.22.1
 
-# --- Google Workspace CLI skills ---
-# Pinned to a specific commit to prevent supply-chain attacks.
-GWS_COMMIT="a52d297cdfafbc53dfed66a3721a9bbd1d50dc31"
+# Claude CLI is pre-installed in the Docker image; assert it is on PATH.
+command -v claude >/dev/null 2>&1 || log "WARNING: Claude CLI not found in image."
 if npx skills list 2>/dev/null | grep -q googleworkspace; then
     log "GWS skills already installed."
 else

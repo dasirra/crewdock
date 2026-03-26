@@ -94,7 +94,6 @@ gum_install() {
     fi
   fi
 
-  # Binary download — pinned version with SHA256 verification
   echo "Downloading gum v${GUM_PINNED_VERSION} binary from GitHub releases..."
   local os arch download_url expected_sha256 tmpdir
   os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -119,21 +118,19 @@ gum_install() {
 
   tmpdir=$(mktemp -d)
   if curl -fsSL "$download_url" -o "${tmpdir}/gum.tar.gz" 2>/dev/null; then
-    # Verify SHA256 checksum before extracting
-    local actual_sha256
+    # Verify integrity before extracting (tampered archive could exploit tar path traversal)
+    local sha_cmd
     if command -v sha256sum >/dev/null 2>&1; then
-      actual_sha256=$(sha256sum "${tmpdir}/gum.tar.gz" | cut -d' ' -f1)
+      sha_cmd="sha256sum"
     elif command -v shasum >/dev/null 2>&1; then
-      actual_sha256=$(shasum -a 256 "${tmpdir}/gum.tar.gz" | cut -d' ' -f1)
+      sha_cmd="shasum -a 256"
     else
       echo "ERROR: No sha256sum or shasum found; cannot verify download."
       rm -rf "$tmpdir"
       return 1
     fi
-    if [ "$actual_sha256" != "$expected_sha256" ]; then
+    if ! echo "${expected_sha256}  ${tmpdir}/gum.tar.gz" | $sha_cmd -c - >/dev/null 2>&1; then
       echo "ERROR: SHA256 mismatch for gum download."
-      echo "  Expected: ${expected_sha256}"
-      echo "  Got:      ${actual_sha256}"
       rm -rf "$tmpdir"
       return 1
     fi
