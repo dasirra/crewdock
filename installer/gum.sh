@@ -5,6 +5,14 @@
 GUM_MIN_MAJOR=0
 GUM_MIN_MINOR=14
 
+# Pinned release — update SHA256 values when bumping version
+GUM_PINNED_VERSION="0.17.0"
+# SHA256 checksums from https://github.com/charmbracelet/gum/releases/download/v0.17.0/checksums.txt
+GUM_SHA256_LINUX_X86_64="69ee169bd6387331928864e94d47ed01ef649fbfe875baed1bbf27b5377a6fdb"
+GUM_SHA256_LINUX_ARM64="b0b9ed95cbf7c8b7073f17b9591811f5c001e33c7cfd066ca83ce8a07c576f9c"
+GUM_SHA256_DARWIN_ARM64="e2a4b8596efa05821d8c58d0c1afbcd7ad1699ba69c689cc3ff23a4a99c8b237"
+GUM_SHA256_DARWIN_X86_64="cd66576aeebe6cd19c771863c7e8d696e0e1d5387d1e7075666baa67c2052e53"
+
 # gum_detect — returns 0 if gum >= 0.14 is installed, 1 otherwise
 gum_detect() {
   if ! command -v gum >/dev/null 2>&1; then
@@ -86,37 +94,47 @@ gum_install() {
     fi
   fi
 
-  # Binary download fallback
-  echo "Downloading gum binary from GitHub releases..."
-  local os arch download_url tmpdir
+  echo "Downloading gum v${GUM_PINNED_VERSION} binary from GitHub releases..."
+  local os arch download_url expected_sha256 tmpdir
   os=$(uname -s | tr '[:upper:]' '[:lower:]')
   arch=$(uname -m)
-  case "$arch" in
-    x86_64)  arch="x86_64" ;;
-    aarch64|arm64) arch="arm64" ;;
-    *)
-      echo "Unsupported architecture: $arch"
-      return 1
-      ;;
-  esac
-
-  # Query latest release from GitHub API
-  local version
-  version=$(curl -sf "https://api.github.com/repos/charmbracelet/gum/releases/latest" 2>/dev/null | \
-    grep -o '"tag_name":"[^"]*"' | cut -d'"' -f4 | tr -d 'v' || echo "")
-  if [ -z "$version" ]; then
-    # Fallback version if API is unreachable
-    version="0.14.5"
-    echo "Could not fetch latest version, trying $version..."
-  fi
 
   local os_cap
   os_cap=$(echo "$os" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
 
-  download_url="https://github.com/charmbracelet/gum/releases/download/v${version}/gum_${version}_${os_cap}_${arch}.tar.gz"
+  case "${os}/${arch}" in
+    linux/x86_64)       arch="x86_64"; expected_sha256="${GUM_SHA256_LINUX_X86_64}" ;;
+    linux/aarch64|\
+    linux/arm64)        arch="arm64";  expected_sha256="${GUM_SHA256_LINUX_ARM64}" ;;
+    darwin/arm64)       arch="arm64";  expected_sha256="${GUM_SHA256_DARWIN_ARM64}" ;;
+    darwin/x86_64)      arch="x86_64"; expected_sha256="${GUM_SHA256_DARWIN_X86_64}" ;;
+    *)
+      echo "Unsupported platform: ${os}/${arch}"
+      return 1
+      ;;
+  esac
+
+  download_url="https://github.com/charmbracelet/gum/releases/download/v${GUM_PINNED_VERSION}/gum_${GUM_PINNED_VERSION}_${os_cap}_${arch}.tar.gz"
 
   tmpdir=$(mktemp -d)
   if curl -fsSL "$download_url" -o "${tmpdir}/gum.tar.gz" 2>/dev/null; then
+    # Verify integrity before extracting (tampered archive could exploit tar path traversal)
+    local sha_cmd
+    if command -v sha256sum >/dev/null 2>&1; then
+      sha_cmd="sha256sum"
+    elif command -v shasum >/dev/null 2>&1; then
+      sha_cmd="shasum -a 256"
+    else
+      echo "ERROR: No sha256sum or shasum found; cannot verify download."
+      rm -rf "$tmpdir"
+      return 1
+    fi
+    if ! echo "${expected_sha256}  ${tmpdir}/gum.tar.gz" | $sha_cmd -c - >/dev/null 2>&1; then
+      echo "ERROR: SHA256 mismatch for gum download."
+      rm -rf "$tmpdir"
+      return 1
+    fi
+
     tar -xzf "${tmpdir}/gum.tar.gz" -C "$tmpdir" 2>/dev/null
     local gum_bin
     gum_bin=$(find "$tmpdir" -name "gum" -type f | head -1)

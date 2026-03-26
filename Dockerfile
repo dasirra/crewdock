@@ -28,15 +28,28 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get update && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
 
-# xurl CLI (X/Twitter API v2)
-RUN XURL_TAG=$(curl -sf https://api.github.com/repos/xdevplatform/xurl/releases/latest | jq -r '.tag_name') \
-    && [ "$XURL_TAG" != "null" ] && [ -n "$XURL_TAG" ] \
-    && curl -fsSL "https://github.com/xdevplatform/xurl/releases/download/${XURL_TAG}/xurl_Linux_x86_64.tar.gz" \
-      | tar -xz -C /usr/local/bin xurl \
-    && chmod +x /usr/local/bin/xurl
+# xurl CLI (X/Twitter API v2) — pinned version with SHA256 verification
+ARG XURL_VERSION=1.0.3
+ARG XURL_SHA256_AMD64=34bc67bfbaf29ae121f7788fbd2491d3a8b95cb3947333ad39732e694497c182
+ARG XURL_SHA256_ARM64=3b56605e66508d7bc77c36cc711d41307b4cd76aec09111890b33f9d82975483
+RUN ARCH=$(dpkg --print-architecture) \
+    && case "$ARCH" in \
+         amd64) XURL_ARCH="x86_64"; XURL_SHA256="${XURL_SHA256_AMD64}" ;; \
+         arm64) XURL_ARCH="arm64";  XURL_SHA256="${XURL_SHA256_ARM64}" ;; \
+         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+       esac \
+    && curl -fsSL "https://github.com/xdevplatform/xurl/releases/download/v${XURL_VERSION}/xurl_Linux_${XURL_ARCH}.tar.gz" \
+         -o /tmp/xurl.tar.gz \
+    && echo "${XURL_SHA256}  /tmp/xurl.tar.gz" | sha256sum -c - \
+    && tar -xz -C /usr/local/bin -f /tmp/xurl.tar.gz xurl \
+    && chmod +x /usr/local/bin/xurl \
+    && rm /tmp/xurl.tar.gz
 
-# Google Workspace CLI (gws) + agent skills
-RUN npm install -g @googleworkspace/cli
+# Google Workspace CLI + Claude CLI — pinned versions, single layer
+ARG CLAUDE_CLI_VERSION=2.1.83
+RUN npm install -g \
+      @googleworkspace/cli@0.22.1 \
+      @anthropic-ai/claude-code@${CLAUDE_CLI_VERSION}
 
 # Agent templates (read-only source for entrypoint to copy into workspace)
 COPY --chown=node:node agents/ /opt/openclaw-agents/
