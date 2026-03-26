@@ -130,7 +130,10 @@ auth-codex:        ## Set up OpenAI Codex OAuth
 	docker compose exec openclaw-gateway node dist/index.js models auth login --provider openai-codex
 
 auth-ollama:       ## Set up Ollama (local LLM inference)
-	@DEFAULT_HOST="http://localhost:11434"; \
+	@if ! docker compose ps --status running 2>/dev/null | grep -q openclaw-gateway; then \
+	  echo "Error: Gateway is not running. Run 'make up' first."; exit 1; \
+	fi
+	@DEFAULT_HOST="http://host.docker.internal:11434"; \
 	read -p "Ollama host URL [$$DEFAULT_HOST]: " INPUT_HOST; \
 	HOST=$${INPUT_HOST:-$$DEFAULT_HOST}; \
 	echo ""; \
@@ -138,16 +141,6 @@ auth-ollama:       ## Set up Ollama (local LLM inference)
 	  http://*|https://*) ;; \
 	  *) echo "  Error: URL must start with http:// or https://"; exit 1;; \
 	esac; \
-	if [ ! -f .env ]; then \
-	  touch .env; chmod 600 .env; \
-	fi; \
-	tmpfile=$$(mktemp); \
-	grep -v '^OLLAMA_HOST=' .env > "$$tmpfile" 2>/dev/null || true; \
-	echo "OLLAMA_HOST=$$HOST" >> "$$tmpfile"; \
-	mv "$$tmpfile" .env; \
-	chmod 600 .env; \
-	echo "  Saved OLLAMA_HOST=$$HOST to .env"; \
-	echo ""; \
 	echo "  Checking connectivity..."; \
 	if RESPONSE=$$(curl -sf --max-time 5 "$$HOST/api/tags" 2>/dev/null); then \
 	  echo "  Connected to Ollama at $$HOST"; \
@@ -162,11 +155,14 @@ auth-ollama:       ## Set up Ollama (local LLM inference)
 	else \
 	  echo "  Could not reach Ollama at $$HOST"; \
 	  echo "  Make sure Ollama is running: ollama serve"; \
+	  exit 1; \
 	fi; \
 	echo ""; \
-	if docker compose ps --status running 2>/dev/null | grep -q openclaw-gateway; then \
-	  echo "  Gateway is running. Restart to pick up changes: make restart-gateway"; \
-	fi
+	echo "  Registering Ollama provider with OpenClaw..."; \
+	docker compose exec openclaw-gateway openclaw config set models.providers.ollama.baseUrl "$$HOST"; \
+	docker compose exec openclaw-gateway openclaw config set models.providers.ollama.apiKey "ollama-local"; \
+	docker compose exec openclaw-gateway openclaw config set models.providers.ollama.api "ollama"; \
+	echo "  Ollama registered. Run 'make shell' then 'openclaw models list' to verify."
 
 # --- Maintenance ---
 
